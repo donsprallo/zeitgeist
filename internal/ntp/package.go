@@ -34,6 +34,12 @@ import (
 
 const (
 	NTP_PACKAGE_SIZE int = 48
+
+	NTP_LI_MASK    int = 0x0000_0003
+	NTP_LI_NOT_SET int = 0x0000_0000
+	NTP_LI_SUB_SEC int = 0x0000_0001
+	NTP_LI_ADD_SEC int = 0x0000_0002
+	NTP_LI_NOT_SYN int = 0x0000_0003
 )
 
 // This is the ntp package representation. Its received from
@@ -49,12 +55,16 @@ type NtpPackage struct {
 	TransmitTimestamp  uint64
 }
 
+// Get the ntp leap indicator. The value can be one of the constants
+// NTP_LI_NOT_SET, NTP_LI_SUB_SEC, NTP_LI_ADD_SEC or NTP_LI_NOT_SYN.
 func (pkg *NtpPackage) GetLeap() uint32 {
-	return uint32((pkg.Header & 0x0000_0003))
+	return uint32((pkg.Header & uint32(NTP_LI_MASK)))
 }
 
-func (pkg *NtpPackage) SetLeap(val uint32) {
-
+// Set the ntp leap indicator. The value can be one of the constants
+// NTP_LI_NOT_SET, NTP_LI_SUB_SEC, NTP_LI_ADD_SEC or NTP_LI_NOT_SYN.
+func (pkg *NtpPackage) SetLeap(value uint32) {
+	pkg.Header |= (uint32(NTP_LI_MASK) & value)
 }
 
 func (pkg *NtpPackage) GetVersion() uint32 {

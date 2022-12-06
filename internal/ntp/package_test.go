@@ -90,3 +90,27 @@ func TestPackageFromBytes(t *testing.T) {
 		}
 	}
 }
+
+func TestGetLeapIndicator(t *testing.T) {
+	// Create an test values array; the ntp package leap indicator is compared
+	// with this test value. The values are constants from ntp package.
+	values := []int{
+		NTP_LI_NOT_SET,
+		NTP_LI_SUB_SEC,
+		NTP_LI_ADD_SEC,
+		NTP_LI_NOT_SYN,
+	}
+
+	// Test all data in test values
+	for _, value := range values {
+		pkg := NtpPackage{}
+		// First set leap indicator. Next we get and compare the
+		// value we set. This must be the same here.
+		pkg.SetLeap(uint32(value))
+		leap := pkg.GetLeap()
+		if leap != uint32(value) {
+			t.Errorf("ntp get leap indicator value failed: %d != %d",
+				leap, value)
+		}
+	}
+}
