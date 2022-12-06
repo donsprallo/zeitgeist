@@ -12,6 +12,14 @@ var (
 	ntp_time_delta float64
 )
 
+// Create a new ntp server instance.
+func NewNtpServer(host string, port int) *NtpServer {
+	return &NtpServer{
+		Host: host,
+		Port: port,
+	}
+}
+
 type NtpServer struct {
 	Host string // Hostname of ntp server
 	Port int    // Port of ntp server
@@ -39,13 +47,16 @@ func (server *NtpServer) Serve() {
 
 	for {
 		// Read received data from udp socket
-		message := make([]byte, 48)
-		rlen, raddr, err := conn.ReadFromUDP(message)
+		data := make([]byte, 48)
+		rlen, raddr, err := conn.ReadFromUDP(data)
 		if err != nil {
-			// TODO: what is the error reason. We do not need
-			// panic here
+			// Its possible that the connection is closed. This case is a panic
+			// because it is not expected and handled by the server.
 			log.Panic(err)
 		}
+
+		// Get receive timestamp so fast as possible.
+		rx_timestamp := time.Now()
 
 		// Be sure that remote address is set
 		if raddr == nil {
@@ -54,59 +65,61 @@ func (server *NtpServer) Serve() {
 		}
 		log.Infof("read %d bytes of data from %s", rlen, raddr)
 
-		go handleRequest(conn, raddr, message)
+		// Handle connection in background. We can wait here for
+		// new packages
+		go handleNtpRequest(conn, raddr, data, rx_timestamp)
 	}
 }
 
-// Create a new ntp server instance.
-func NewNtpServer(host string, port int) *NtpServer {
-	return &NtpServer{
-		Host: host,
-		Port: port,
-	}
-}
-
-func handleRequest(
+// Handle an ntp request from conn and remote addr. The connection is not
+// closed after request is handled, because the server must wait for a new
+// connection.
+func handleNtpRequest(
 	conn *net.UDPConn,
 	addr *net.UDPAddr,
 	data []byte,
+	rx_timestamp time.Time,
 ) {
-	secs, frac := getNtpSeconds(time.Now())
+	// Parse request data to a ntp package
+	req_ntp_pkg, err := PackageFromBytes(data)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	log.Infof("read ntp request %s", req_ntp_pkg)
 
-	response := make([]byte, 48)
-	binary.BigEndian.PutUint32(response[40:], uint32(secs))
-	binary.BigEndian.PutUint32(response[44:], uint32(frac))
+	// Create response from requested package
+	res, err := buildNtpResponse(req_ntp_pkg)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	// Convert package data to bytes array
+	res_bytes, err := res.ToBytes()
+	if err != nil {
+		log.Error(err)
+		return
+	}
 
 	// Send response to client
 	log.Infof("write ntp response to %s", addr)
-	_, err := conn.WriteToUDP(response, addr)
+	_, err = conn.WriteToUDP(res_bytes, addr)
 	if err != nil {
 		log.Error(err)
 		return
 	}
 }
 
-// Build a server response.
-func buildResponse() (*NtpPackage, error) {
-	return &NtpPackage{}, nil
-}
+// Build a ntp package from response and current time.
+func buildNtpResponse(
+	reqPkg *NtpPackage,
+) (*NtpPackage, error) {
+	secs, frac := getNtpSeconds(time.Now())
 
-func getNtpSeconds(t time.Time) (secs, fracs int64) {
-	secs = t.Unix() + int64(getNtpDelta())
-	fracs = int64(t.Nanosecond())
-	return
-}
+	response := make([]byte, 48)
+	binary.BigEndian.PutUint32(response[40:], uint32(secs))
+	binary.BigEndian.PutUint32(response[44:], uint32(frac))
 
-// Calculate the ntp time delta. This is the ntp epoche (1900-01-01)
-// substracted from unix epoche (1970-01-01).
-func getNtpDelta() float64 {
-	// Cache calculation
-	if ntp_time_delta == 0.0 {
-		ntpEpoch := time.Date(
-			1900, 1, 1, 0, 0, 0, 0, time.UTC)
-		unixEpoch := time.Date(
-			1970, 1, 1, 0, 0, 0, 0, time.UTC)
-		ntp_time_delta = unixEpoch.Sub(ntpEpoch).Seconds()
-	}
-	return ntp_time_delta
+	return PackageFromBytes(response)
 }
