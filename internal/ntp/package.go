@@ -32,14 +32,38 @@ import (
               tbl. of ntp package header - 32 Bit
 */
 
+// Constants for the ntp package.
 const (
 	NTP_PACKAGE_SIZE int = 48
+)
 
+// Constants for the ntp package header leap indicator field.
+const (
 	NTP_LI_MASK    int = 0x0000_0003
 	NTP_LI_NOT_SET int = 0x0000_0000
 	NTP_LI_SUB_SEC int = 0x0000_0001
 	NTP_LI_ADD_SEC int = 0x0000_0002
 	NTP_LI_NOT_SYN int = 0x0000_0003
+)
+
+// Constants for the ntp package header version field.
+const (
+	NTP_VN_MASK int = 0x0000_001C
+	NTP_VN_V3   int = 0x0000_0003
+	NTP_VN_V4   int = 0x0000_0004
+)
+
+// Constants for the ntp package header mode field.
+const (
+	NTP_MODE_MASK        int = 0x0000_00E0
+	NTP_MODE_RESERVED    int = 0x0000_0000
+	NTP_MODE_SYM_ACTIVE  int = 0x0000_0001
+	NTP_MODE_SYM_PASSIVE int = 0x0000_0002
+	NTP_MODE_CLIENT      int = 0x0000_0003
+	NTP_MODE_SERVER      int = 0x0000_0004
+	NTP_MODE_BROADCAST   int = 0x0000_0005
+	NTP_MODE_CONTROL     int = 0x0000_0006
+	NTP_MODE_PRIVATE     int = 0x0000_0007
 )
 
 // This is the ntp package representation. Its received from
@@ -67,20 +91,24 @@ func (pkg *NtpPackage) SetLeap(value uint32) {
 	pkg.Header |= (uint32(NTP_LI_MASK) & value)
 }
 
+// Get the ntp version number.
 func (pkg *NtpPackage) GetVersion() uint32 {
-	return uint32((pkg.Header & 0x0000_001C) >> 2)
+	return uint32((pkg.Header & uint32(NTP_VN_MASK)) >> 2)
 }
 
-func (pkg *NtpPackage) SetVersion(val uint32) {
-
+// Set the ntp version number.
+func (pkg *NtpPackage) SetVersion(value uint32) {
+	pkg.Header |= uint32(NTP_VN_MASK) & (value << 2)
 }
 
+// Get the ntp mode.
 func (pkg *NtpPackage) GetMode() uint32 {
-	return uint32((pkg.Header & 0x0000_E000) >> 5)
+	return uint32((pkg.Header & uint32(NTP_MODE_MASK)) >> 5)
 }
 
-func (pkg *NtpPackage) SetMode(val uint32) {
-
+// Set the ntp mode.
+func (pkg *NtpPackage) SetMode(value uint32) {
+	pkg.Header |= uint32(NTP_MODE_MASK) & (value << 5)
 }
 
 func (pkg *NtpPackage) GetStratum() uint32 {

@@ -91,7 +91,7 @@ func TestPackageFromBytes(t *testing.T) {
 	}
 }
 
-func TestGetLeapIndicator(t *testing.T) {
+func TestSetGetLeapIndicator(t *testing.T) {
 	// Create an test values array; the ntp package leap indicator is compared
 	// with this test value. The values are constants from ntp package.
 	values := []int{
@@ -111,6 +111,56 @@ func TestGetLeapIndicator(t *testing.T) {
 		if leap != uint32(value) {
 			t.Errorf("ntp get leap indicator value failed: %d != %d",
 				leap, value)
+		}
+	}
+}
+
+func TestSetGetVersion(t *testing.T) {
+	// Create an test values array; the ntp package version is compared
+	// with this test value.
+	values := []int{
+		NTP_VN_V3,
+		NTP_VN_V4,
+	}
+
+	// Test all data in test values
+	for _, value := range values {
+		pkg := NtpPackage{}
+		// First set version. Next we get and compare the
+		// value we set. This must be the same here.
+		pkg.SetVersion(uint32(value))
+		version := pkg.GetVersion()
+		if version != uint32(value) {
+			t.Errorf("ntp get version value failed: %d != %d",
+				version, value)
+		}
+	}
+}
+
+func TestSetGetMode(t *testing.T) {
+	// Create an test values array; the ntp package version is compared
+	// with this test value.
+	values := []int{
+		NTP_MODE_RESERVED,
+		NTP_MODE_SYM_ACTIVE,
+		NTP_MODE_SYM_PASSIVE,
+		NTP_MODE_CLIENT,
+		NTP_MODE_SERVER,
+		NTP_MODE_BROADCAST,
+		NTP_MODE_CONTROL,
+		NTP_MODE_PRIVATE,
+	}
+
+	// Test all data in test values
+	for _, value := range values {
+		pkg := NtpPackage{}
+		// First set mode. Next we get and compare the
+		// value we set. This must be the same here.
+		pkg.SetMode(uint32(value))
+		mode := pkg.GetMode()
+		if mode != uint32(value) {
+			t.Errorf("ntp get mode value failed: %d != %d",
+				mode, value)
 		}
 	}
 }
