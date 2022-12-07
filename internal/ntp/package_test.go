@@ -94,7 +94,7 @@ func TestPackageFromBytes(t *testing.T) {
 func TestSetGetLeapIndicator(t *testing.T) {
 	// Create an test values array; the ntp package leap indicator is compared
 	// with this test value. The values are constants from ntp package.
-	values := []int{
+	values := []uint32{
 		NTP_LI_NOT_SET,
 		NTP_LI_SUB_SEC,
 		NTP_LI_ADD_SEC,
@@ -106,9 +106,9 @@ func TestSetGetLeapIndicator(t *testing.T) {
 		pkg := NtpPackage{}
 		// First set leap indicator. Next we get and compare the
 		// value we set. This must be the same here.
-		pkg.SetLeap(uint32(value))
+		pkg.SetLeap(value)
 		leap := pkg.GetLeap()
-		if leap != uint32(value) {
+		if leap != value {
 			t.Errorf("ntp get leap indicator value failed: %d != %d",
 				leap, value)
 		}
@@ -118,7 +118,7 @@ func TestSetGetLeapIndicator(t *testing.T) {
 func TestSetGetVersion(t *testing.T) {
 	// Create an test values array; the ntp package version is compared
 	// with this test value.
-	values := []int{
+	values := []uint32{
 		NTP_VN_V3,
 		NTP_VN_V4,
 	}
@@ -128,9 +128,9 @@ func TestSetGetVersion(t *testing.T) {
 		pkg := NtpPackage{}
 		// First set version. Next we get and compare the
 		// value we set. This must be the same here.
-		pkg.SetVersion(uint32(value))
+		pkg.SetVersion(value)
 		version := pkg.GetVersion()
-		if version != uint32(value) {
+		if version != value {
 			t.Errorf("ntp get version value failed: %d != %d",
 				version, value)
 		}
@@ -140,7 +140,7 @@ func TestSetGetVersion(t *testing.T) {
 func TestSetGetMode(t *testing.T) {
 	// Create an test values array; the ntp package version is compared
 	// with this test value.
-	values := []int{
+	values := []uint32{
 		NTP_MODE_RESERVED,
 		NTP_MODE_SYM_ACTIVE,
 		NTP_MODE_SYM_PASSIVE,
@@ -156,11 +156,36 @@ func TestSetGetMode(t *testing.T) {
 		pkg := NtpPackage{}
 		// First set mode. Next we get and compare the
 		// value we set. This must be the same here.
-		pkg.SetMode(uint32(value))
+		pkg.SetMode(value)
 		mode := pkg.GetMode()
-		if mode != uint32(value) {
+		if mode != value {
 			t.Errorf("ntp get mode value failed: %d != %d",
 				mode, value)
+		}
+	}
+}
+
+func TestSetGetStratum(t *testing.T) {
+	// Create an test values array; the ntp package version is compared
+	// with this test value.
+	values := []uint32{
+		0,
+		1,
+		127,
+		254,
+		255,
+	}
+
+	// Test all data in test values
+	for _, value := range values {
+		pkg := NtpPackage{}
+		// First set stratum. Next we get and compare the
+		// value we set. This must be the same here.
+		pkg.SetStratum(value)
+		stratum := pkg.GetStratum()
+		if stratum != value {
+			t.Errorf("ntp get stratum value failed: %d != %d",
+				stratum, value)
 		}
 	}
 }
