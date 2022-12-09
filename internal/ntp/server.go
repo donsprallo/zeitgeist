@@ -1,15 +1,10 @@
 package ntp
 
 import (
-	"encoding/binary"
 	"net"
 	"time"
 
 	log "github.com/sirupsen/logrus"
-)
-
-var (
-	ntp_time_delta float64
 )
 
 // Create a new ntp server instance.
@@ -81,22 +76,23 @@ func handleNtpRequest(
 	rx_timestamp time.Time,
 ) {
 	// Parse request data to a ntp package
-	req_ntp_pkg, err := PackageFromBytes(data)
+	pkg, err := PackageFromBytes(data)
 	if err != nil {
 		log.Error(err)
 		return
 	}
-	log.Infof("read ntp request %s", req_ntp_pkg)
+	log.Infof("read ntp request %s", pkg)
 
 	// Create response from requested package
-	res, err := buildNtpResponse(req_ntp_pkg)
+	pkg, err = buildNtpResponse(
+		pkg, rx_timestamp)
 	if err != nil {
 		log.Error(err)
 		return
 	}
 
 	// Convert package data to bytes array
-	res_bytes, err := res.ToBytes()
+	res_bytes, err := pkg.ToBytes()
 	if err != nil {
 		log.Error(err)
 		return
@@ -113,13 +109,26 @@ func handleNtpRequest(
 
 // Build a ntp package from response and current time.
 func buildNtpResponse(
-	reqPkg *NtpPackage,
+	pkg *NtpPackage,
+	rx_timestamp time.Time,
 ) (*NtpPackage, error) {
-	secs, frac := getNtpSeconds(time.Now())
+	// Set header
+	pkg.SetLeap(NTP_LI_ADD_SEC)
+	pkg.SetVersion(NTP_VN_V3)
+	pkg.SetMode(NTP_MODE_SERVER)
+	pkg.SetStratum(3)
+	pkg.SetPoll(2)
+	pkg.SetPrecision(2)
 
-	response := make([]byte, 48)
-	binary.BigEndian.PutUint32(response[40:], uint32(secs))
-	binary.BigEndian.PutUint32(response[44:], uint32(frac))
+	// Set root delay
+	pkg.SetRootDelay(1)
+	pkg.SetRootDispersion(2)
+	pkg.SetReferenceClockId([]byte("ABCD"))
+	pkg.SetReferenceTimestamp(time.Now())
+	pkg.SetOriginateTimestamp(time.Now())
+	pkg.SetReceiveTimestamp(rx_timestamp)
+	// Set transmit timestamp at least before sent
+	pkg.SetTransmitTimestamp(time.Now())
 
-	return PackageFromBytes(response)
+	return pkg, nil
 }

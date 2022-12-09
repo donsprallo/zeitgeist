@@ -14,9 +14,9 @@ func TestPackageToBytes(t *testing.T) {
 	}{
 		// Encode "HelloWorld" to hex codes
 		{NtpPackage{
-			Header:         0x4865_6C6C,
-			RootDelay:      0x6F57_6F72,
-			RootDispersion: 0x6C64_0000,
+			header:         0x4865_6C6C,
+			rootDelay:      0x6F57_6F72,
+			rootDispersion: 0x6C64_0000,
 		}, []byte("HelloWorld")},
 	}
 
@@ -52,9 +52,9 @@ func TestPackageFromBytes(t *testing.T) {
 	}{
 		// Encode "HelloWorld" to hex codes
 		{NtpPackage{
-			Header:         0x4865_6C6C,
-			RootDelay:      0x6F57_6F72,
-			RootDispersion: 0x6C64_0000,
+			header:         0x4865_6C6C,
+			rootDelay:      0x6F57_6F72,
+			rootDispersion: 0x6C64_0000,
 		}, []byte("HelloWorld")},
 	}
 
@@ -74,19 +74,19 @@ func TestPackageFromBytes(t *testing.T) {
 
 		// Check result equal to test value. We do not need to test
 		// all fields here. We just test the first three values.
-		if pkg.Header != table.pkg.Header {
+		if pkg.header != table.pkg.header {
 			t.Errorf("ntp package from bytes '%X' not equal to '%X'",
-				pkg.Header, &table.pkg.Header)
+				pkg.header, &table.pkg.header)
 		}
 
-		if pkg.RootDelay != table.pkg.RootDelay {
+		if pkg.rootDelay != table.pkg.rootDelay {
 			t.Errorf("ntp package from bytes '%X' not equal to '%X'",
-				pkg.RootDelay, &table.pkg.RootDelay)
+				pkg.rootDelay, &table.pkg.rootDelay)
 		}
 
-		if pkg.RootDispersion != table.pkg.RootDispersion {
+		if pkg.rootDispersion != table.pkg.rootDispersion {
 			t.Errorf("ntp package from bytes '%X' not equal to '%X'",
-				pkg.RootDispersion, &table.pkg.RootDispersion)
+				pkg.rootDispersion, &table.pkg.rootDispersion)
 		}
 	}
 }
