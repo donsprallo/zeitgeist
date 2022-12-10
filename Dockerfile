@@ -28,7 +28,8 @@ EXPOSE 123
 EXPOSE 80
 EXPOSE 443
 
-ENV NTP_HOST "0.0.0.0"
+# Listen to ip dual stack
+ENV NTP_HOST ""
 ENV NTP_PORT 123
 
 USER ntp

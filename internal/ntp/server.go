@@ -1,6 +1,7 @@
 package ntp
 
 import (
+	"fmt"
 	"net"
 	"time"
 
@@ -8,30 +9,41 @@ import (
 )
 
 // Create a new ntp server instance.
-func NewNtpServer(host string, port int) *NtpServer {
+func NewNtpServer(
+	host string,
+	port int,
+	routing RoutingStrategy,
+) *NtpServer {
 	return &NtpServer{
-		Host: host,
-		Port: port,
+		Host:    host,
+		Port:    port,
+		Routing: routing,
 	}
 }
 
 type NtpServer struct {
-	Host string // Hostname of ntp server
-	Port int    // Port of ntp server
+	Host    string          // Hostname of ntp server
+	Port    int             // Port of ntp server
+	Routing RoutingStrategy // Routing table
+}
+
+// Get the server address string.
+func (s *NtpServer) getAddrStr() string {
+	return fmt.Sprintf("%s:%d", s.Host, s.Port)
 }
 
 // Start serving of ntp server. The function is not returning until
 // the server received an unhandled error. All known errors are put
 // to log and skip the current connection,
-func (server *NtpServer) Serve() {
+func (s *NtpServer) Serve() {
 	// Setup socket server address
-	addr := &net.UDPAddr{
-		IP:   net.ParseIP(server.Host),
-		Port: server.Port,
+	addr, err := net.ResolveUDPAddr("udp", s.getAddrStr())
+	if err != nil {
+		log.Panic(err)
 	}
 
 	// Listen to address with udp socket
-	conn, err := net.ListenUDP("udp", addr)
+	conn, err := net.ListenUDP(addr.Network(), addr)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -62,14 +74,14 @@ func (server *NtpServer) Serve() {
 
 		// Handle connection in background. We can wait here for
 		// new packages
-		go handleNtpRequest(conn, raddr, data, rx_timestamp)
+		go s.handleRequest(conn, raddr, data, rx_timestamp)
 	}
 }
 
 // Handle an ntp request from conn and remote addr. The connection is not
 // closed after request is handled, because the server must wait for a new
 // connection.
-func handleNtpRequest(
+func (s *NtpServer) handleRequest(
 	conn *net.UDPConn,
 	addr *net.UDPAddr,
 	data []byte,
@@ -81,11 +93,20 @@ func handleNtpRequest(
 		log.Error(err)
 		return
 	}
+
+	pkg.SetReceiveTimestamp(rx_timestamp)
 	log.Infof("read ntp request %s", pkg)
 
+	// Find response builder by client addr
+	handler, err := s.Routing.
+		FindResponseBuilder(addr.IP)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
 	// Create response from requested package
-	pkg, err = buildNtpResponse(
-		pkg, rx_timestamp)
+	pkg, err = handler.BuildResponse(pkg)
 	if err != nil {
 		log.Error(err)
 		return
@@ -105,30 +126,4 @@ func handleNtpRequest(
 		log.Error(err)
 		return
 	}
-}
-
-// Build a ntp package from response and current time.
-func buildNtpResponse(
-	pkg *NtpPackage,
-	rx_timestamp time.Time,
-) (*NtpPackage, error) {
-	// Set header
-	pkg.SetLeap(NTP_LI_ADD_SEC)
-	pkg.SetVersion(NTP_VN_V3)
-	pkg.SetMode(NTP_MODE_SERVER)
-	pkg.SetStratum(3)
-	pkg.SetPoll(2)
-	pkg.SetPrecision(2)
-
-	// Set root delay
-	pkg.SetRootDelay(1)
-	pkg.SetRootDispersion(2)
-	pkg.SetReferenceClockId([]byte("ABCD"))
-	pkg.SetReferenceTimestamp(time.Now())
-	pkg.SetOriginateTimestamp(time.Now())
-	pkg.SetReceiveTimestamp(rx_timestamp)
-	// Set transmit timestamp at least before sent
-	pkg.SetTransmitTimestamp(time.Now())
-
-	return pkg, nil
 }

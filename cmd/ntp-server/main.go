@@ -20,8 +20,10 @@ var (
 // does not exist, a fallback value is returned.
 func getEnvStr(key string, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
+		log.Debugf("get parsed env[%s]: %s", key, value)
 		return value
 	}
+	log.Debugf("get fallback env[%s]: %s", key, fallback)
 	return fallback
 }
 
@@ -29,10 +31,12 @@ func getEnvStr(key string, fallback string) string {
 // does not exist, a fallback value is returned.
 func getEnvInt(key string, fallback int) int {
 	if value, ok := os.LookupEnv(key); ok {
-		if parsed, err := strconv.Atoi(value); err != nil {
+		if parsed, err := strconv.Atoi(value); err == nil {
+			log.Debugf("get parsed env[%s]: %d", key, parsed)
 			return parsed
 		}
 	}
+	log.Debugf("get fallback env[%s]: %d", key, fallback)
 	return fallback
 }
 
@@ -43,6 +47,11 @@ func init() {
 	if err != nil {
 		log.Warn("no .env file to load")
 	}
+}
+
+func init() {
+	// Setup application logger
+	log.SetLevel(log.DebugLevel)
 }
 
 func init() {
@@ -57,7 +66,15 @@ func init() {
 }
 
 func main() {
+	// Create routing protocol for handle requests
+	defaultBuilder := &ntp.SystemResponseBuilder{
+		Version: ntp.NTP_VN_V3,
+		Mode:    ntp.NTP_MODE_SERVER,
+		Stratum: 1,
+		Id:      []byte("ABCD"),
+	}
+	routing := ntp.NewStaticRouting(defaultBuilder)
 	// Create ntp server and start application
-	server := ntp.NewNtpServer(*host, *port)
+	server := ntp.NewNtpServer(*host, *port, routing)
 	server.Serve()
 }
