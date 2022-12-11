@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/donsprallo/gots/internal/ntp"
+	"github.com/donsprallo/gots/internal/server"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 )
@@ -67,14 +68,14 @@ func init() {
 
 func main() {
 	// Create routing protocol for handle requests
-	defaultBuilder := &ntp.SystemResponseBuilder{
+	defaultBuilder := &server.SystemResponseBuilder{
 		Version: ntp.NTP_VN_V3,
 		Mode:    ntp.NTP_MODE_SERVER,
 		Stratum: 1,
 		Id:      []byte("ABCD"),
 	}
-	routing := ntp.NewStaticRouting(defaultBuilder)
+	routing := server.NewStaticRouting(defaultBuilder)
 	// Create ntp server and start application
-	server := ntp.NewNtpServer(*host, *port, routing)
+	server := server.NewNtpServer(*host, *port, routing)
 	server.Serve()
 }

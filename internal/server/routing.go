@@ -1,4 +1,4 @@
-package ntp
+package server
 
 import (
 	"errors"

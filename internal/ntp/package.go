@@ -8,21 +8,18 @@ import (
 )
 
 var (
-	NtpEpoch  time.Time
-	UnixEpoch time.Time
-	NtpDelta  float64
-)
-
-func init() {
-	// Calculate the ntp time delta in seconds. The time delta is the ntp
-	// epoch (1900-01-01) substracted from unix epoche (1970-01-01). The
-	// returned value is represented by the Universal Coordinated Time (UTC).
-	NtpEpoch = time.Date(
+	// Represent the time.Date for the ntp epoch (1900-01-01).
+	NtpEpoch time.Time = time.Date(
 		1900, 1, 1, 0, 0, 0, 0, time.UTC)
-	UnixEpoch = time.Date(
+
+	// Represent the time.Date for the unix epoch (1970-01-01).
+	UnixEpoch time.Time = time.Date(
 		1970, 1, 1, 0, 0, 0, 0, time.UTC)
-	NtpDelta = UnixEpoch.Sub(NtpEpoch).Seconds()
-}
+
+	// The timedelta in secods from ntp epoch to unix epoch. The value is
+	// calculated by substract ntp epoch from unix epoch.
+	NtpDelta float64 = UnixEpoch.Sub(NtpEpoch).Seconds()
+)
 
 // Constants for the ntp package.
 const (
@@ -73,6 +70,7 @@ func ntpSecondsToTimestamp(secs, fracs uint32) time.Time {
 	binary.BigEndian.PutUint32(buf[4:], fracs)
 
 	t := time.Time{}
+	t.UnmarshalBinary(buf)
 	return t
 }
 

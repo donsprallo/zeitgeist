@@ -1,10 +1,11 @@
-package ntp
+package server
 
 import (
 	"fmt"
 	"net"
 	"time"
 
+	"github.com/donsprallo/gots/internal/ntp"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -88,7 +89,7 @@ func (s *NtpServer) handleRequest(
 	rx_timestamp time.Time,
 ) {
 	// Parse request data to a ntp package
-	pkg, err := PackageFromBytes(data)
+	pkg, err := ntp.PackageFromBytes(data)
 	if err != nil {
 		log.Error(err)
 		return

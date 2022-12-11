@@ -1,9 +1,13 @@
-package ntp
+package server
 
-import "time"
+import (
+	"time"
+
+	"github.com/donsprallo/gots/internal/ntp"
+)
 
 type ResponseBuilder interface {
-	BuildResponse(pkg *NtpPackage) (*NtpPackage, error)
+	BuildResponse(pkg *ntp.NtpPackage) (*ntp.NtpPackage, error)
 }
 
 type SystemResponseBuilder struct {
@@ -19,10 +23,10 @@ type SystemResponseBuilder struct {
 
 // Build a ntp package from response and current time.
 func (builder SystemResponseBuilder) BuildResponse(
-	pkg *NtpPackage,
-) (*NtpPackage, error) {
+	pkg *ntp.NtpPackage,
+) (*ntp.NtpPackage, error) {
 	// Set header
-	pkg.SetLeap(NTP_LI_NOT_SYN)
+	pkg.SetLeap(ntp.NTP_LI_NOT_SYN)
 	pkg.SetVersion(builder.Version)
 	pkg.SetMode(builder.Mode)
 	pkg.SetStratum(builder.Stratum)

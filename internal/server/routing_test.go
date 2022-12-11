@@ -1,10 +1,12 @@
-package ntp
+package server
 
 import (
 	"errors"
 	"fmt"
 	"net"
 	"testing"
+
+	"github.com/donsprallo/gots/internal/ntp"
 )
 
 // Just a dummy to mock response builder.
@@ -14,7 +16,7 @@ type DummyResponseBuilder struct {
 
 // Implement ntp.ResponseBuilder interface.
 func (rb DummyResponseBuilder) BuildResponse(
-	pkg *NtpPackage) (*NtpPackage, error) {
+	pkg *ntp.NtpPackage) (*ntp.NtpPackage, error) {
 	// Just return an error
 	return nil, errors.New(
 		"not implemented")
