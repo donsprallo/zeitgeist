@@ -98,16 +98,15 @@ func (s *NtpServer) handleRequest(
 	pkg.SetReceiveTimestamp(rx_timestamp)
 	log.Infof("read ntp request %s", pkg)
 
-	// Find response builder by client addr
-	handler, err := s.Routing.
-		FindResponseBuilder(addr.IP)
+	// Find response timer by client addr
+	timer, err := s.Routing.FindTimer(addr.IP)
 	if err != nil {
 		log.Error(err)
 		return
 	}
 
 	// Create response from requested package
-	pkg, err = handler.BuildResponse(pkg)
+	pkg, err = timer.Package(pkg)
 	if err != nil {
 		log.Error(err)
 		return

@@ -6,11 +6,13 @@ import (
 	"github.com/donsprallo/gots/internal/ntp"
 )
 
-type ResponseBuilder interface {
-	BuildResponse(pkg *ntp.NtpPackage) (*ntp.NtpPackage, error)
+type NtpTimer interface {
+	Package(pkg *ntp.NtpPackage) (*ntp.NtpPackage, error)
+	Increment()
+	Set(t time.Time)
 }
 
-type SystemResponseBuilder struct {
+type SystemNtpTimer struct {
 	Version        uint32
 	Mode           uint32
 	Stratum        uint32
@@ -22,25 +24,33 @@ type SystemResponseBuilder struct {
 }
 
 // Build a ntp package from response and current time.
-func (builder SystemResponseBuilder) BuildResponse(
+func (timer SystemNtpTimer) Package(
 	pkg *ntp.NtpPackage,
 ) (*ntp.NtpPackage, error) {
 	// Set header
 	pkg.SetLeap(ntp.NTP_LI_NOT_SYN)
-	pkg.SetVersion(builder.Version)
-	pkg.SetMode(builder.Mode)
-	pkg.SetStratum(builder.Stratum)
-	pkg.SetPoll(builder.poll)
-	pkg.SetPrecision(builder.precision)
+	pkg.SetVersion(timer.Version)
+	pkg.SetMode(timer.Mode)
+	pkg.SetStratum(timer.Stratum)
+	pkg.SetPoll(timer.poll)
+	pkg.SetPrecision(timer.precision)
 
 	// Set package data
-	pkg.SetRootDelay(builder.rootDelay)
-	pkg.SetRootDispersion(builder.rootDispersion)
-	pkg.SetReferenceClockId(builder.Id)
+	pkg.SetRootDelay(timer.rootDelay)
+	pkg.SetRootDispersion(timer.rootDispersion)
+	pkg.SetReferenceClockId(timer.Id)
 	pkg.SetReferenceTimestamp(time.Now())
 	pkg.SetOriginateTimestamp(time.Now())
 	// Set transmit timestamp at least before sent
 	pkg.SetTransmitTimestamp(time.Now())
 
 	return pkg, nil
+}
+
+func (timer SystemNtpTimer) Increment() {
+	// Do nothing here
+}
+
+func (timer SystemNtpTimer) Set(t time.Time) {
+	// Do nothing here
 }
