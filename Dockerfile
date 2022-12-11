@@ -31,6 +31,10 @@ EXPOSE 443
 # Listen to ip dual stack
 ENV NTP_HOST ""
 ENV NTP_PORT 123
+ENV API_HOST ""
+ENV API_PORT 80
 
 USER ntp
+
+# Start golang time server daemon
 CMD ["gotsd"]

@@ -1,20 +1,27 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
+	"os/signal"
 	"strconv"
+	"time"
 
+	"github.com/donsprallo/gots/internal/api"
 	"github.com/donsprallo/gots/internal/ntp"
 	"github.com/donsprallo/gots/internal/server"
+	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 )
 
 // Variables for command line arguments.
 var (
-	host *string
-	port *int
+	ntp_host *string
+	ntp_port *int
+	api_host *string
+	api_port *int
 )
 
 // Load a string value from environment key. If environment key
@@ -57,11 +64,17 @@ func init() {
 
 func init() {
 	// Setup command line arguments
-	host = flag.String(
+	ntp_host = flag.String(
 		"host", getEnvStr("NTP_HOST", "localhost"),
 		"ntp daemon hostname")
-	port = flag.Int("port", getEnvInt("NTP_PORT", 123),
+	ntp_port = flag.Int("port", getEnvInt("NTP_PORT", 123),
 		"ntp daemon port")
+	api_host = flag.String(
+		"api-host", getEnvStr("API_HOST", "localhost"),
+		"api hostname")
+	api_port = flag.Int(
+		"api-port", getEnvInt("API_PORT", 80),
+		"api port")
 	// Parse command line arguments
 	flag.Parse()
 }
@@ -76,6 +89,33 @@ func main() {
 	}
 	routing := server.NewStaticRouting(defaultBuilder)
 	// Create ntp server and start application
-	server := server.NewNtpServer(*host, *port, routing)
-	server.Serve()
+	server := server.NewNtpServer(
+		*ntp_host, *ntp_port, routing)
+	go server.Serve()
+
+	// Create REST api server
+	router := mux.NewRouter()
+	apiServer := api.NewApiServer(
+		*api_host, *api_port, router)
+	apiServer.RegisterRoutes("/api/v1")
+	go apiServer.Serve()
+
+	// Gracefully shutdown
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	// Block until SIGINT received
+	<-c
+
+	// Create a deadline to wait for
+	wait := 10 * time.Second
+	ctx, cancel := context.WithTimeout(
+		context.Background(), wait)
+	defer cancel()
+
+	// Does not block if no connections, but will otherwise wait
+	// unitl the timeout deadline.
+	apiServer.Shutdown(ctx)
+	log.Info("shutting down")
+	os.Exit(0)
 }
