@@ -8,8 +8,8 @@ import (
 )
 
 type RoutingTableEntry struct {
-	IPNet    net.IPNet
-	NtpTimer NtpTimer
+	IPNet net.IPNet
+	Timer Timer
 }
 
 type RoutingTable []RoutingTableEntry
@@ -33,7 +33,7 @@ type RoutingStrategy interface {
 
 	// Find a ntp.ResponseBuilder by a network address. The ntp.ResponseBuilder
 	// is used to build a ntp package response.
-	FindTimer(ip net.IP) (NtpTimer, error)
+	FindTimer(ip net.IP) (Timer, error)
 }
 
 // The ntp.StaticRouting is using a simple routing algorithm. Each client
@@ -48,7 +48,7 @@ type StaticRouting struct {
 // the last one, that is checked by a find.
 func (r *StaticRouting) AddTimer(
 	ipnet net.IPNet,
-	timer NtpTimer,
+	timer Timer,
 ) error {
 	// IPNet must be unique in routing table
 	if r.table.Contains(ipnet) {
@@ -57,8 +57,8 @@ func (r *StaticRouting) AddTimer(
 	}
 	// Add entry to routing table
 	r.table = append(r.table, RoutingTableEntry{
-		IPNet:    ipnet,
-		NtpTimer: timer,
+		IPNet: ipnet,
+		Timer: timer,
 	})
 	return nil
 }
@@ -68,7 +68,7 @@ func (r *StaticRouting) AddTimer(
 // never be the case.
 func (r *StaticRouting) FindTimer(
 	ip net.IP,
-) (NtpTimer, error) {
+) (Timer, error) {
 	// First search for a match by equal; We must reverse the
 	// static routing table entries.
 	for i := len(r.table) - 1; i >= 0; i-- {
@@ -76,7 +76,7 @@ func (r *StaticRouting) FindTimer(
 		if ip.Mask(entry.IPNet.Mask).Equal(entry.IPNet.IP) {
 			log.Debugf("host[%s] euqals mask[%s] ip[%s]",
 				ip, entry.IPNet.Mask, entry.IPNet.IP)
-			return entry.NtpTimer, nil
+			return entry.Timer, nil
 		}
 	}
 	// Next search for a match by contain; We must reverse the
@@ -86,7 +86,7 @@ func (r *StaticRouting) FindTimer(
 		if entry.IPNet.Contains(ip) {
 			log.Debugf("host[%s] contains mask[%s] ip[%s]",
 				ip, entry.IPNet.Mask, entry.IPNet.IP)
-			return entry.NtpTimer, nil
+			return entry.Timer, nil
 		}
 	}
 	// No match found
@@ -111,7 +111,7 @@ var (
 
 // Create a new ntp.StaticRouting instance. A default ntp.NtpTimer
 // must be added to be sure that we have a default ntp timer.
-func NewStaticRouting(defaultTimer NtpTimer) *StaticRouting {
+func NewStaticRouting(defaultTimer Timer) *StaticRouting {
 	// Create basic structure
 	routing := StaticRouting{
 		table: make(RoutingTable, 0, 10),

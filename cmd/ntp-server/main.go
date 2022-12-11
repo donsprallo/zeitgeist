@@ -81,12 +81,16 @@ func init() {
 
 func main() {
 	// Create routing protocol for handle requests
-	defaultTimer := &server.SystemNtpTimer{
-		Version: ntp.NTP_VN_V3,
-		Mode:    ntp.NTP_MODE_SERVER,
-		Stratum: 1,
-		Id:      []byte("ABCD"),
+	systemTimerPackage := ntp.NtpPackage{}
+	systemTimerPackage.SetVersion(ntp.NTP_VN_V3)
+	systemTimerPackage.SetMode(ntp.NTP_MODE_SERVER)
+	systemTimerPackage.SetStratum(1)
+	systemTimerPackage.SetReferenceClockId([]byte("ABCD"))
+
+	defaultTimer := &server.SystemTimer{
+		NTPPackage: systemTimerPackage,
 	}
+
 	routing := server.NewStaticRouting(defaultTimer)
 	// Create ntp server and start application
 	server := server.NewNtpServer(

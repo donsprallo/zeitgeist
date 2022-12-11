@@ -106,7 +106,8 @@ func (s *NtpServer) handleRequest(
 	}
 
 	// Create response from requested package
-	pkg, err = timer.Package(pkg)
+	pkg, err = PackageFromTimer(
+		pkg, timer.Package(), timer)
 	if err != nil {
 		log.Error(err)
 		return

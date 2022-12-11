@@ -1,7 +1,6 @@
 package server
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"testing"
@@ -11,29 +10,32 @@ import (
 )
 
 // Just a dummy to mock response timer.
-type DummyNtpTimer struct {
+type DummyTimer struct {
 	Message string
 }
 
-// Implement ntp.NtpTimer interface.
-func (rb DummyNtpTimer) Package(
-	pkg *ntp.NtpPackage,
-) (*ntp.NtpPackage, error) {
-	// Just return an error
-	return nil, errors.New(
-		"not implemented")
+// Implement ntp.Timer interface.
+func (rb DummyTimer) Package() *ntp.NtpPackage {
+	return nil
 }
 
-func (rb DummyNtpTimer) Increment() {
+// Implement ntp.Timer interface.
+func (rb DummyTimer) Increment() {
 	// Do nothing here
 }
 
-func (rb DummyNtpTimer) Set(t time.Time) {
+// Implement ntp.Timer interface.
+func (rb DummyTimer) Set(t time.Time) {
 	// Do nothing here
+}
+
+// Implement ntp.Timer interface.
+func (rb DummyTimer) Get() time.Time {
+	return time.Time{}
 }
 
 // Implement stringer interface.
-func (rb DummyNtpTimer) String() string {
+func (rb DummyTimer) String() string {
 	return fmt.Sprintf(rb.Message)
 }
 
@@ -55,9 +57,9 @@ func TestFindTimer(t *testing.T) {
 
 	// Create test routing strategy; we are using three different
 	// response timers here. One default and one for each network.
-	defaultTimer := DummyNtpTimer{Message: "default"}
-	net1Timer := DummyNtpTimer{Message: "net1"}
-	net2Timer := DummyNtpTimer{Message: "net2"}
+	defaultTimer := DummyTimer{Message: "default"}
+	net1Timer := DummyTimer{Message: "net1"}
+	net2Timer := DummyTimer{Message: "net2"}
 	routing := NewStaticRouting(defaultTimer)
 	// Add timer that matches 192.168.1.0 network
 	routing.AddTimer(net.IPNet{
@@ -81,7 +83,7 @@ func TestFindTimer(t *testing.T) {
 				table.IP, err)
 		}
 		// Check timer; the ip must resolved by a specific timer
-		dummy := timer.(DummyNtpTimer)
+		dummy := timer.(DummyTimer)
 		if dummy.Message != table.Message {
 			t.Errorf("ip[%s] found incorrect timer: want '%s' get '%s'",
 				table.IP, table.Message, dummy.Message)
