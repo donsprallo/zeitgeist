@@ -94,6 +94,21 @@ func (r *StaticRouting) FindResponseBuilder(
 		"no handler found in routing table")
 }
 
+var (
+	defaultRoute = net.IPNet{
+		Mask: net.CIDRMask(0, 32),
+		IP:   net.ParseIP("0.0.0.0"),
+	}
+	ipv4Route = net.IPNet{
+		Mask: net.CIDRMask(24, 32),
+		IP:   net.ParseIP("127.0.0.1"),
+	}
+	ipv6Route = net.IPNet{
+		Mask: net.CIDRMask(120, 128),
+		IP:   net.ParseIP("::1"),
+	}
+)
+
 // Create a new ntp.StaticRouting instance. A default ntp.ResponseBuilder
 // must be added to be sure that we have a default response builder.
 func NewStaticRouting(defaultBuilder ResponseBuilder) *StaticRouting {
@@ -103,26 +118,17 @@ func NewStaticRouting(defaultBuilder ResponseBuilder) *StaticRouting {
 	}
 	// Add the default response builder to router
 	routing.AddResponseBuilder(
-		net.IPNet{
-			Mask: net.CIDRMask(0, 32),
-			IP:   net.ParseIP("0.0.0.0"),
-		},
+		defaultRoute,
 		defaultBuilder,
 	)
 	// Add IPv4 loopback address
 	routing.AddResponseBuilder(
-		net.IPNet{
-			Mask: net.CIDRMask(24, 32),
-			IP:   net.ParseIP("127.0.0.1"),
-		},
+		ipv4Route,
 		defaultBuilder,
 	)
 	// Add IPv6 loopback address
 	routing.AddResponseBuilder(
-		net.IPNet{
-			Mask: net.CIDRMask(120, 128),
-			IP:   net.ParseIP("::1"),
-		},
+		ipv6Route,
 		defaultBuilder,
 	)
 	return &routing
