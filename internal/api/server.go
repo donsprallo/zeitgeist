@@ -2,9 +2,9 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/donsprallo/gots/internal/server"
+	"net"
 	"net/http"
 	"time"
 
@@ -13,25 +13,25 @@ import (
 )
 
 type Server struct {
-	host    string               // The server hostname
-	port    int                  // The server port
-	router  *mux.Router          // The http handler
-	routing *server.RoutingTable // The routing as database
-	server  *http.Server         // The http server instance
+	host   string               // The server hostname
+	port   int                  // The server port
+	router *mux.Router          // The http handler
+	rTable *server.RoutingTable // The routing table as database
+	server *http.Server         // The http server instance
 }
 
 func NewApiServer(
 	host string,
 	port int,
 	router *mux.Router,
-	routing *server.RoutingTable,
+	rTable *server.RoutingTable,
 ) *Server {
 	// Create api server
 	return &Server{
-		host:    host,
-		port:    port,
-		router:  router,
-		routing: routing,
+		host:   host,
+		port:   port,
+		router: router,
+		rTable: rTable,
 	}
 }
 
@@ -42,15 +42,15 @@ func (s *Server) RegisterRoutes(
 	// Create api version 1 router from main router.
 	apiV1Router := s.router.
 		PathPrefix(prefix).Subrouter()
-	registerApiV1Handlers(apiV1Router)
+	s.registerApiV1Handlers(apiV1Router)
 }
 
 // Serve start listening the Server.
 func (s *Server) Serve() {
 	// Create http server for REST api.
 	s.server = &http.Server{
-		Handler:      s.router,
 		Addr:         s.getAddrStr(),
+		Handler:      s.router,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
@@ -66,54 +66,58 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
 }
 
+// Get the server address string from host and port.
 func (s *Server) getAddrStr() string {
 	return fmt.Sprintf("%s:%d", s.host, s.port)
 }
 
-func registerApiV1Handlers(router *mux.Router) {
+// Get the server address from host and port.
+func (s *Server) getAddr() *net.TCPAddr {
+	addr, err := net.ResolveTCPAddr("tcp", s.getAddrStr())
+	if err != nil {
+		log.Panic(err)
+	}
+	return addr
+}
+
+func (s *Server) registerApiV1Handlers(router *mux.Router) {
 	// Healthcheck
-	router.HandleFunc("/healthcheckHandler",
-		healthcheckHandler).Methods("GET")
+	router.HandleFunc("/healthcheck",
+		s.healthcheckHandler).Methods("GET")
 
 	// Default route management
 	router.HandleFunc("/route/default",
-		getDefaultRouteHandler).Methods("GET")
+		s.getDefaultRouteHandler).Methods("GET")
 	router.HandleFunc("/route/default",
-		updateDefaultRouteHandler).Methods("POST")
+		s.updateDefaultRouteHandler).Methods("POST")
 
 	// Route collection management
 	router.HandleFunc("/route",
-		getAllRoutesHandler).Methods("GET")
+		s.getAllRoutesHandler).Methods("GET")
 	router.HandleFunc("/route",
-		newRouteHandler).Methods("PUT")
+		s.newRouteHandler).Methods("PUT")
 
 	// Specific route management
 	router.HandleFunc("/route/{id}",
-		deleteRouteHandler).Methods("DELETE")
+		s.deleteRouteHandler).Methods("DELETE")
 	router.HandleFunc("/route/{id}",
-		getRouteHandler).Methods("GET")
+		s.getRouteHandler).Methods("GET")
 	router.HandleFunc("/route/{id}",
-		updateRouteHandler).Methods("POST")
+		s.updateRouteHandler).Methods("POST")
 }
 
 // Get the healthcheck response. The healthcheck always return the same
 // result. This enables an easy way to automatically check the result.
-func healthcheckHandler(
+func (s *Server) healthcheckHandler(
 	res http.ResponseWriter,
-	req *http.Request,
+	_ *http.Request,
 ) {
-	// Set response header.
-	res.Header().Add("Content-Type", "application/json")
-
 	// Always return the same result.
-	err := json.NewEncoder(res).Encode(map[string]bool{"ok": true})
-	if err != nil {
-		log.Panic(err)
-	}
+	mustJsonResponse(res, map[string]bool{"ok": true})
 }
 
 // Get the mode and time info from default route.
-func getDefaultRouteHandler(
+func (s *Server) getDefaultRouteHandler(
 	res http.ResponseWriter,
 	req *http.Request,
 ) {
@@ -123,7 +127,7 @@ func getDefaultRouteHandler(
 
 // Set the mode to default router. On specific mode, its possible
 // to update settings.
-func updateDefaultRouteHandler(
+func (s *Server) updateDefaultRouteHandler(
 	res http.ResponseWriter,
 	req *http.Request,
 ) {
@@ -132,16 +136,35 @@ func updateDefaultRouteHandler(
 }
 
 // Get all registered routes.
-func getAllRoutesHandler(
+func (s *Server) getAllRoutesHandler(
 	res http.ResponseWriter,
-	req *http.Request,
+	_ *http.Request,
 ) {
-	// Write not implemented status code
-	res.WriteHeader(http.StatusNotImplemented)
+	routes := s.rTable.All()
+	lenRoutes := len(routes)
+	// Build response from routing table entries. We know the size
+	// of routing entries here. So we can allocate the size.
+	response := Routes{
+		Length: lenRoutes,
+		Routes: make([]Route, lenRoutes),
+	}
+	// Iterate through routing entries and add each entry to response.
+	// As subnet, we return the CIDR string representation of the ip net.
+	// For timer mode, an extra function is converting the timer to its
+	// string representation.
+	for idx, entry := range routes {
+		response.Routes[idx] = Route{
+			Id:     idx,
+			Subnet: entry.IPNet.String(),
+			Timer:  server.TimerName(entry.Timer),
+		}
+	}
+	// Return as JSON response.
+	mustJsonResponse(res, response)
 }
 
 // Create a new route.
-func newRouteHandler(
+func (s *Server) newRouteHandler(
 	res http.ResponseWriter,
 	req *http.Request,
 ) {
@@ -150,7 +173,7 @@ func newRouteHandler(
 }
 
 // Delete an existing route.
-func deleteRouteHandler(
+func (s *Server) deleteRouteHandler(
 	res http.ResponseWriter,
 	req *http.Request,
 ) {
@@ -159,7 +182,7 @@ func deleteRouteHandler(
 }
 
 // Get a specific route.
-func getRouteHandler(
+func (s *Server) getRouteHandler(
 	res http.ResponseWriter,
 	req *http.Request,
 ) {
@@ -168,7 +191,7 @@ func getRouteHandler(
 }
 
 // Update settings of specific route.
-func updateRouteHandler(
+func (s *Server) updateRouteHandler(
 	res http.ResponseWriter,
 	req *http.Request,
 ) {
