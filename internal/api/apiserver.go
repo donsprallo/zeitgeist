@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/donsprallo/gots/internal/server"
 	"net/http"
 	"time"
 
@@ -12,22 +13,25 @@ import (
 )
 
 type Server struct {
-	Host   string       // Server hostname
-	Port   int          // Server port
-	router *mux.Router  // Server router
-	server *http.Server // Http listener
+	host    string               // The server hostname
+	port    int                  // The server port
+	router  *mux.Router          // The http handler
+	routing *server.RoutingTable // The routing as database
+	server  *http.Server         // The http server instance
 }
 
 func NewApiServer(
 	host string,
 	port int,
 	router *mux.Router,
+	routing *server.RoutingTable,
 ) *Server {
-	// Create ApiServer
+	// Create api server
 	return &Server{
-		Host:   host,
-		Port:   port,
-		router: router,
+		host:    host,
+		port:    port,
+		router:  router,
+		routing: routing,
 	}
 }
 
@@ -57,12 +61,13 @@ func (s *Server) Serve() {
 	}
 }
 
+// Shutdown handle gracefully shutdown without interrupt active connections.
 func (s *Server) Shutdown(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
 }
 
 func (s *Server) getAddrStr() string {
-	return fmt.Sprintf("%s:%d", s.Host, s.Port)
+	return fmt.Sprintf("%s:%d", s.host, s.port)
 }
 
 func registerApiV1Handlers(router *mux.Router) {
