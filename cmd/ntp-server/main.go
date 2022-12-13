@@ -18,10 +18,10 @@ import (
 
 // Variables for command line arguments.
 var (
-	ntp_host *string
-	ntp_port *int
-	api_host *string
-	api_port *int
+	ntpHost *string
+	ntpPort *int
+	apiHost *string
+	apiPort *int
 )
 
 // Load a string value from environment key. If environment key
@@ -64,15 +64,15 @@ func init() {
 
 func init() {
 	// Setup command line arguments
-	ntp_host = flag.String(
+	ntpHost = flag.String(
 		"host", getEnvStr("NTP_HOST", "localhost"),
 		"ntp daemon hostname")
-	ntp_port = flag.Int("port", getEnvInt("NTP_PORT", 123),
+	ntpPort = flag.Int("port", getEnvInt("NTP_PORT", 123),
 		"ntp daemon port")
-	api_host = flag.String(
+	apiHost = flag.String(
 		"api-host", getEnvStr("API_HOST", "localhost"),
 		"api hostname")
-	api_port = flag.Int(
+	apiPort = flag.Int(
 		"api-port", getEnvInt("API_PORT", 80),
 		"api port")
 	// Parse command line arguments
@@ -81,9 +81,9 @@ func init() {
 
 func main() {
 	// Create routing protocol for handle requests
-	systemTimerPackage := ntp.NtpPackage{}
-	systemTimerPackage.SetVersion(ntp.NTP_VN_V3)
-	systemTimerPackage.SetMode(ntp.NTP_MODE_SERVER)
+	systemTimerPackage := ntp.Package{}
+	systemTimerPackage.SetVersion(ntp.VersionV3)
+	systemTimerPackage.SetMode(ntp.ModeServer)
 	systemTimerPackage.SetStratum(1)
 	systemTimerPackage.SetReferenceClockId([]byte("ABCD"))
 
@@ -93,14 +93,14 @@ func main() {
 
 	routing := server.NewStaticRouting(defaultTimer)
 	// Create ntp server and start application
-	server := server.NewNtpServer(
-		*ntp_host, *ntp_port, routing)
-	go server.Serve()
+	ntpServer := server.NewNtpServer(
+		*ntpHost, *ntpPort, routing)
+	go ntpServer.Serve()
 
 	// Create REST api server
 	router := mux.NewRouter()
 	apiServer := api.NewApiServer(
-		*api_host, *api_port, router)
+		*apiHost, *apiPort, router)
 	apiServer.RegisterRoutes("/api/v1")
 	go apiServer.Serve()
 
@@ -118,8 +118,12 @@ func main() {
 	defer cancel()
 
 	// Does not block if no connections, but will otherwise wait
-	// unitl the timeout deadline.
-	apiServer.Shutdown(ctx)
+	// until the timeout deadline.
+	err := apiServer.Shutdown(ctx)
+	if err != nil {
+		log.Error(err)
+	}
+
 	log.Info("shutting down")
 	os.Exit(0)
 }

@@ -15,7 +15,7 @@ type DummyTimer struct {
 }
 
 // Implement ntp.Timer interface.
-func (rb DummyTimer) Package() *ntp.NtpPackage {
+func (rb DummyTimer) Package() *ntp.Package {
 	return nil
 }
 
@@ -40,7 +40,7 @@ func (rb DummyTimer) String() string {
 }
 
 func TestFindTimer(t *testing.T) {
-	// Create test table; The message is an identifier, to check which
+	// Create test Table; The message is an identifier, to check which
 	// response timer is returned from routing strategy.
 	tables := []struct {
 		Message string
@@ -62,13 +62,13 @@ func TestFindTimer(t *testing.T) {
 	net2Timer := DummyTimer{Message: "net2"}
 	routing := NewStaticRouting(defaultTimer)
 	// Add timer that matches 192.168.1.0 network
-	routing.AddTimer(net.IPNet{
+	routing.Table.MustAdd(net.IPNet{
 		Mask: net.CIDRMask(24, 32),
 		IP:   net.ParseIP("192.168.1.0"),
 	}, net1Timer)
 	// Add timer that matches 192.168.2.11 host but
 	// not the 192.168.2.0 network.
-	routing.AddTimer(net.IPNet{
+	routing.Table.MustAdd(net.IPNet{
 		Mask: net.CIDRMask(32, 32),
 		IP:   net.ParseIP("192.168.2.11"),
 	}, net2Timer)
@@ -82,7 +82,7 @@ func TestFindTimer(t *testing.T) {
 			t.Errorf("ip[%s] err: %s",
 				table.IP, err)
 		}
-		// Check timer; the ip must resolved by a specific timer
+		// Check timer; the ip must resolve by a specific timer
 		dummy := timer.(DummyTimer)
 		if dummy.Message != table.Message {
 			t.Errorf("ip[%s] found incorrect timer: want '%s' get '%s'",

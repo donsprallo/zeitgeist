@@ -7,17 +7,62 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// RoutingTableEntry is a entry in a RoutingTable. Each entry contains
+// information for a RoutingStrategy to decide, which Timer instance
+// can be found.
 type RoutingTableEntry struct {
-	IPNet net.IPNet
-	Timer Timer
+	IPNet net.IPNet // IPNet is the net.IP and net.IPMask to match by RoutingStrategy.
+	Timer Timer     // Timer is a Timer instance returned by RoutingStrategy.
 }
 
-type RoutingTable []RoutingTableEntry
+// RoutingTable is a collection of RoutingTableEntry.
+type RoutingTable struct {
+	entries []RoutingTableEntry
+}
 
-// Check that routing table contains value. Return true if
-// value is in table, otherwise return false.
+// NewRoutingTable create a new RoutingTable instance with size.
+func NewRoutingTable(size int) *RoutingTable {
+	return &RoutingTable{
+		entries: make([]RoutingTableEntry, 0, size),
+	}
+}
+
+// Add adds a net.IP address and Timer to the Table. This address maps
+// a net.IP address to a specific Timer.
+func (t *RoutingTable) Add(
+	ipNet net.IPNet,
+	timer Timer,
+) error {
+	// IP address must be unique in routing Table.
+	if t.Contains(ipNet) {
+		return errors.New(
+			"key exist in routing Table")
+	}
+	// Add entry to routing Table.
+	t.entries = append(t.entries, RoutingTableEntry{
+		IPNet: ipNet,
+		Timer: timer,
+	})
+	return nil
+}
+
+// MustAdd works how RoutingTable.Add but on an error a panic is used.
+// The method adds a net.IP address and Timer to the Table. This address
+// maps a net.IP address to a specific Timer.
+func (t *RoutingTable) MustAdd(
+	ipNet net.IPNet,
+	timer Timer,
+) {
+	err := t.Add(ipNet, timer)
+	if err != nil {
+		log.Panic(err)
+	}
+}
+
+// Contains checks if a net.IPNet value exists in the collection. Returns true
+// if net.IPNet value exists in RoutingTable, otherwise return false.
 func (t *RoutingTable) Contains(value net.IPNet) bool {
-	for _, entry := range *t {
+	for _, entry := range t.entries {
 		if entry.IPNet.IP.Equal(value.IP) {
 			return true
 		}
@@ -25,54 +70,35 @@ func (t *RoutingTable) Contains(value net.IPNet) bool {
 	return false
 }
 
-// Each client can get a generic or special case ntp packageresponse. To
-// identify the client, his network address is used. The ntp.Routing maps
-// the clients address to a corresponding ntp.ResponseBuilder. This is called
-// routing in our ntp context.
+// RoutingStrategy is an interface to define a strategy for routing net.IP
+// addresses to a Timer instance. Each request can get a specified response,
+// depends on the response from RoutingStrategy. A net.IP address is mapped
+// to a Timer.
 type RoutingStrategy interface {
 
-	// Find a ntp.ResponseBuilder by a network address. The ntp.ResponseBuilder
-	// is used to build a ntp package response.
+	// FindTimer find a Timer by a net.IP address.
 	FindTimer(ip net.IP) (Timer, error)
 }
 
-// The ntp.StaticRouting is using a simple routing algorithm. Each client
-// can map his network address to a single ntp.NtpTimer. When no
-// timer is found, an default timer is returned.
+// StaticRouting is a specific RoutingStrategy for simple static routing. This
+// means that each net.IP address is managed in a list. To this list net.IP
+// addresses and timers are attached. The list is traversed in reverse order
+// and checked for a match. If a match is found, then the corresponding timer
+// is returned. When no timer is found, a default timer is returned.
 type StaticRouting struct {
-	table RoutingTable
+	Table *RoutingTable
 }
 
-// Add a network address to the router. This address is mapping a clients
-// network address to a specific response timer. The first addedd must be
-// the last one, that is checked by a find.
-func (r *StaticRouting) AddTimer(
-	ipnet net.IPNet,
-	timer Timer,
-) error {
-	// IPNet must be unique in routing table
-	if r.table.Contains(ipnet) {
-		return errors.New(
-			"key exist in routing table")
-	}
-	// Add entry to routing table
-	r.table = append(r.table, RoutingTableEntry{
-		IPNet: ipnet,
-		Timer: timer,
-	})
-	return nil
-}
-
-// Search for a response timer by a net.Addr. When no address matches
+// FindTimer search for a Timer by a net.IP address. When no address matches
 // one of the timers network mask, an error is returned. But this should
-// never be the case.
+// never have reached in normal system.
 func (r *StaticRouting) FindTimer(
 	ip net.IP,
 ) (Timer, error) {
 	// First search for a match by equal; We must reverse the
-	// static routing table entries.
-	for i := len(r.table) - 1; i >= 0; i-- {
-		entry := r.table[i]
+	// static routing Table entries.
+	for i := len(r.Table.entries) - 1; i >= 0; i-- {
+		entry := r.Table.entries[i]
 		if ip.Mask(entry.IPNet.Mask).Equal(entry.IPNet.IP) {
 			log.Debugf("host[%s] euqals mask[%s] ip[%s]",
 				ip, entry.IPNet.Mask, entry.IPNet.IP)
@@ -80,18 +106,18 @@ func (r *StaticRouting) FindTimer(
 		}
 	}
 	// Next search for a match by contain; We must reverse the
-	// static routing table entries.
-	for i := len(r.table) - 1; i >= 0; i-- {
-		entry := r.table[i]
+	// static routing Table entries.
+	for i := len(r.Table.entries) - 1; i >= 0; i-- {
+		entry := r.Table.entries[i]
 		if entry.IPNet.Contains(ip) {
 			log.Debugf("host[%s] contains mask[%s] ip[%s]",
 				ip, entry.IPNet.Mask, entry.IPNet.IP)
 			return entry.Timer, nil
 		}
 	}
-	// No match found
+	// No match found. Should never have reached.
 	return nil, errors.New(
-		"no handler found in routing table")
+		"no handler found in routing Table")
 }
 
 var (
@@ -109,27 +135,18 @@ var (
 	}
 )
 
-// Create a new ntp.StaticRouting instance. A default ntp.NtpTimer
+// NewStaticRouting create a new StaticRouting instance. A default Timer
 // must be added to be sure that we have a default ntp timer.
 func NewStaticRouting(defaultTimer Timer) *StaticRouting {
 	// Create basic structure
 	routing := StaticRouting{
-		table: make(RoutingTable, 0, 10),
+		Table: NewRoutingTable(10),
 	}
-	// Add the default response timer to router
-	routing.AddTimer(
-		defaultRoute,
-		defaultTimer,
-	)
-	// Add IPv4 loopback address
-	routing.AddTimer(
-		ipv4Route,
-		defaultTimer,
-	)
-	// Add IPv6 loopback address
-	routing.AddTimer(
-		ipv6Route,
-		defaultTimer,
-	)
+	// Add the default response timer to router.
+	routing.Table.MustAdd(defaultRoute, defaultTimer)
+	// Add IPv4 loop back address.
+	routing.Table.MustAdd(ipv4Route, defaultTimer)
+	// Add IPv6 loop back address.
+	routing.Table.MustAdd(ipv6Route, defaultTimer)
 	return &routing
 }
