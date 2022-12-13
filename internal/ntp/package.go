@@ -8,75 +8,82 @@ import (
 )
 
 var (
-	// Represent the time.Date for the ntp epoch (1900-01-01).
-	NtpEpoch time.Time = time.Date(
+	// Epoch represent the time.Date for the ntp epoch (1900-01-01).
+	Epoch time.Time = time.Date(
 		1900, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	// Represent the time.Date for the unix epoch (1970-01-01).
+	// UnixEpoch represent the time.Date for the unix epoch (1970-01-01).
 	UnixEpoch time.Time = time.Date(
 		1970, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	// The timedelta in secods from ntp epoch to unix epoch. The value is
-	// calculated by substract ntp epoch from unix epoch.
-	NtpDelta float64 = UnixEpoch.Sub(NtpEpoch).Seconds()
+	// TimeDelta is the time-delta in seconds from ntp epoch to unix epoch. The
+	// value is calculated by subtracting ntp epoch from unix epoch.
+	TimeDelta float64 = UnixEpoch.Sub(Epoch).Seconds()
 )
 
 // Constants for the ntp package.
 const (
-	NTP_PACKAGE_SIZE   int    = 48
-	NTP_STRATUM_MASK   uint32 = 0x00FF_0000
-	NTP_POLL_MASK      uint32 = 0x0000_FF00
-	NTP_PRECISION_MASK uint32 = 0x0000_00FF
+	PackageSize   int    = 48
+	LeapMask      uint32 = 0xC000_0000
+	ModeMask      uint32 = 0x0700_0000
+	VersionMask   uint32 = 0x3800_0000
+	StratumMask   uint32 = 0x00FF_0000
+	PollMask      uint32 = 0x0000_FF00
+	PrecisionMask uint32 = 0x0000_00FF
 )
 
 // Constants for the ntp package header leap indicator field.
 const (
-	NTP_LI_MASK    uint32 = 0xC000_0000
-	NTP_LI_NOT_SET uint32 = 0x0000_0000
-	NTP_LI_SUB_SEC uint32 = 0x0000_0001
-	NTP_LI_ADD_SEC uint32 = 0x0000_0002
-	NTP_LI_NOT_SYN uint32 = 0x0000_0003
+	LeapNotSet uint32 = 0x0000_0000
+	LeapSubSec uint32 = 0x0000_0001
+	LeapAddSec uint32 = 0x0000_0002
+	LeapNotSyn uint32 = 0x0000_0003
 )
 
 // Constants for the ntp package header version field.
 const (
-	NTP_VN_MASK uint32 = 0x3800_0000
-	NTP_VN_V3   uint32 = 0x0000_0003
-	NTP_VN_V4   uint32 = 0x0000_0004
+	VersionV3 uint32 = 0x0000_0003
+	VersionV4 uint32 = 0x0000_0004
 )
 
 // Constants for the ntp package header mode field.
 const (
-	NTP_MODE_MASK        uint32 = 0x0700_0000
-	NTP_MODE_RESERVED    uint32 = 0x0000_0000
-	NTP_MODE_SYM_ACTIVE  uint32 = 0x0000_0001
-	NTP_MODE_SYM_PASSIVE uint32 = 0x0000_0002
-	NTP_MODE_CLIENT      uint32 = 0x0000_0003
-	NTP_MODE_SERVER      uint32 = 0x0000_0004
-	NTP_MODE_BROADCAST   uint32 = 0x0000_0005
-	NTP_MODE_CONTROL     uint32 = 0x0000_0006
-	NTP_MODE_PRIVATE     uint32 = 0x0000_0007
+	ModeReserved   uint32 = 0x0000_0000
+	ModeSymActive  uint32 = 0x0000_0001
+	ModeSymPassive uint32 = 0x0000_0002
+	ModeClient     uint32 = 0x0000_0003
+	ModeServer     uint32 = 0x0000_0004
+	ModeBroadcast  uint32 = 0x0000_0005
+	ModeControl    uint32 = 0x0000_0006
+	ModePrivate    uint32 = 0x0000_0007
 )
 
+// Convert time.Time to seconds and fraction of seconds.
 func timestampToNtpSeconds(t time.Time) (secs, fracs uint32) {
-	secs = uint32(t.Unix() + int64(NtpDelta))
+	// TODO: Must test this
+	secs = uint32(t.Unix() + int64(TimeDelta))
 	fracs = uint32(t.Nanosecond())
 	return
 }
 
+// Convert seconds and fraction of seconds to time.Time.
 func ntpSecondsToTimestamp(secs, fracs uint32) time.Time {
+	// TODO: Must test this
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint32(buf[0:], secs)
 	binary.BigEndian.PutUint32(buf[4:], fracs)
 
 	t := time.Time{}
-	t.UnmarshalBinary(buf)
+	err := t.UnmarshalBinary(buf)
+	if err != nil {
+		return time.Time{}
+	}
 	return t
 }
 
-// This is the ntp package representation. Its received from
-// clients and sent to clients as server response.
-type NtpPackage struct {
+// Package is the ntp package representation. A package is
+// received from clients and sent to clients as server response.
+type Package struct {
 	header             uint32
 	rootDelay          uint32
 	rootDispersion     uint32
@@ -87,152 +94,152 @@ type NtpPackage struct {
 	transmitTimestamp  time.Time
 }
 
-// Get the ntp leap indicator.
-func (pkg *NtpPackage) GetLeap() uint32 {
-	return (pkg.header & NTP_LI_MASK) >> 30
+// GetLeap get the package leap indicator.
+func (pkg *Package) GetLeap() uint32 {
+	return (pkg.header & LeapMask) >> 30
 }
 
-// Set the ntp leap indicator.
-func (pkg *NtpPackage) SetLeap(value uint32) {
-	pkg.header &= ^NTP_LI_MASK
-	pkg.header |= (NTP_LI_MASK & (value << 30))
+// SetLeap set the package leap indicator.
+func (pkg *Package) SetLeap(value uint32) {
+	pkg.header &= ^LeapMask
+	pkg.header |= LeapMask & (value << 30)
 }
 
-// Get the ntp version number.
-func (pkg *NtpPackage) GetVersion() uint32 {
-	return ((pkg.header & NTP_VN_MASK) >> 27)
+// GetVersion get the package version number.
+func (pkg *Package) GetVersion() uint32 {
+	return (pkg.header & VersionMask) >> 27
 }
 
-// Set the ntp version number.
-func (pkg *NtpPackage) SetVersion(value uint32) {
-	pkg.header &= ^NTP_VN_MASK
-	pkg.header |= (NTP_VN_MASK & (value << 27))
+// SetVersion set the package version number.
+func (pkg *Package) SetVersion(value uint32) {
+	pkg.header &= ^VersionMask
+	pkg.header |= VersionMask & (value << 27)
 }
 
-// Get the ntp mode.
-func (pkg *NtpPackage) GetMode() uint32 {
-	return ((pkg.header & NTP_MODE_MASK) >> 24)
+// GetMode get the package mode.
+func (pkg *Package) GetMode() uint32 {
+	return (pkg.header & ModeMask) >> 24
 }
 
-// Set the ntp mode.
-func (pkg *NtpPackage) SetMode(value uint32) {
-	pkg.header &= ^NTP_MODE_MASK
-	pkg.header |= (NTP_MODE_MASK & (value << 24))
+// SetMode set the package mode.
+func (pkg *Package) SetMode(value uint32) {
+	pkg.header &= ^ModeMask
+	pkg.header |= ModeMask & (value << 24)
 }
 
-// Get the ntp stratum value.
-func (pkg *NtpPackage) GetStratum() uint32 {
-	return ((pkg.header & NTP_STRATUM_MASK) >> 16)
+// GetStratum get the package stratum value.
+func (pkg *Package) GetStratum() uint32 {
+	return (pkg.header & StratumMask) >> 16
 }
 
-// Set the ntp stratum value.
-func (pkg *NtpPackage) SetStratum(value uint32) {
-	pkg.header &= ^NTP_STRATUM_MASK
-	pkg.header |= (NTP_STRATUM_MASK & (value << 16))
+// SetStratum set the package stratum value.
+func (pkg *Package) SetStratum(value uint32) {
+	pkg.header &= ^StratumMask
+	pkg.header |= StratumMask & (value << 16)
 }
 
-// Get the ntp poll interval.
-func (pkg *NtpPackage) GetPoll() uint32 {
-	return ((pkg.header & NTP_POLL_MASK) >> 8)
+// GetPoll get the package poll interval.
+func (pkg *Package) GetPoll() uint32 {
+	return (pkg.header & PollMask) >> 8
 }
 
-// Set the ntp poll interval.
-func (pkg *NtpPackage) SetPoll(value uint32) {
-	pkg.header &= ^NTP_POLL_MASK
-	pkg.header |= (NTP_POLL_MASK & (value << 8))
+// SetPoll set the package poll interval.
+func (pkg *Package) SetPoll(value uint32) {
+	pkg.header &= ^PollMask
+	pkg.header |= PollMask & (value << 8)
 }
 
-// Get the ntp precision value.
-func (pkg *NtpPackage) GetPrecision() uint32 {
-	return ((pkg.header & NTP_PRECISION_MASK) >> 0)
+// GetPrecision get the package precision value.
+func (pkg *Package) GetPrecision() uint32 {
+	return (pkg.header & PrecisionMask) >> 0
 }
 
-// Set the ntp precision value.
-func (pkg *NtpPackage) SetPrecision(value uint32) {
-	pkg.header &= ^NTP_PRECISION_MASK
-	pkg.header |= (NTP_PRECISION_MASK & (value << 0))
+// SetPrecision set the package precision value.
+func (pkg *Package) SetPrecision(value uint32) {
+	pkg.header &= ^PrecisionMask
+	pkg.header |= PrecisionMask & (value << 0)
 }
 
-// Get the ntp root delay.
-func (pkg *NtpPackage) GetRootDelay() uint32 {
+// GetRootDelay get the package root delay.
+func (pkg *Package) GetRootDelay() uint32 {
 	return pkg.rootDelay
 }
 
-// Set the ntp root delay.
-func (pkg *NtpPackage) SetRootDelay(value uint32) {
+// SetRootDelay set the package root delay.
+func (pkg *Package) SetRootDelay(value uint32) {
 	pkg.rootDelay = value
 }
 
-// Get the ntp root dispersion.
-func (pkg *NtpPackage) GetRootDispersion() uint32 {
+// GetRootDispersion get the package root dispersion.
+func (pkg *Package) GetRootDispersion() uint32 {
 	return pkg.rootDispersion
 }
 
-// Set the ntp root dispersion.
-func (pkg *NtpPackage) SetRootDispersion(value uint32) {
+// SetRootDispersion set the package root dispersion.
+func (pkg *Package) SetRootDispersion(value uint32) {
 	pkg.rootDispersion = value
 }
 
-// Get the ntp reference clock identifier.
-func (pkg *NtpPackage) GetReferenceClockId() []byte {
+// GetReferenceClockId get the package reference clock identifier.
+func (pkg *Package) GetReferenceClockId() []byte {
 	buf := make([]byte, 4)
 	return binary.BigEndian.AppendUint32(
 		buf, pkg.referenceClockId)
 }
 
-// Set the ntp reference clock identifier.
-func (pkg *NtpPackage) SetReferenceClockId(value []byte) {
+// SetReferenceClockId set the package reference clock identifier.
+func (pkg *Package) SetReferenceClockId(value []byte) {
 	pkg.referenceClockId = binary.BigEndian.Uint32(value)
 }
 
-// Get the ntp reference timestamp.
-func (pkg *NtpPackage) GetReferenceTimestamp() time.Time {
+// GetReferenceTimestamp get the package reference timestamp.
+func (pkg *Package) GetReferenceTimestamp() time.Time {
 	return pkg.referenceTimestamp
 }
 
-// Set the ntp reference timestamp.
-func (pkg *NtpPackage) SetReferenceTimestamp(value time.Time) {
+// SetReferenceTimestamp set the package reference timestamp.
+func (pkg *Package) SetReferenceTimestamp(value time.Time) {
 	pkg.referenceTimestamp = value
 }
 
-// Get the ntp originate timestamp.
-func (pkg *NtpPackage) GetOriginateTimestamp() time.Time {
+// GetOriginateTimestamp get the package originate timestamp.
+func (pkg *Package) GetOriginateTimestamp() time.Time {
 	return pkg.originateTimestamp
 }
 
-// Set the ntp originate timestamp.
-func (pkg *NtpPackage) SetOriginateTimestamp(value time.Time) {
+// SetOriginateTimestamp set the package originate timestamp.
+func (pkg *Package) SetOriginateTimestamp(value time.Time) {
 	pkg.originateTimestamp = value
 }
 
-// Get the ntp receive timestamp.
-func (pkg *NtpPackage) GetReceiveTimestamp() time.Time {
+// GetReceiveTimestamp get the package receive timestamp.
+func (pkg *Package) GetReceiveTimestamp() time.Time {
 	return pkg.receiveTimestamp
 }
 
-// Set the ntp receive timestamp.
-func (pkg *NtpPackage) SetReceiveTimestamp(value time.Time) {
+// SetReceiveTimestamp set the package receive timestamp.
+func (pkg *Package) SetReceiveTimestamp(value time.Time) {
 	pkg.receiveTimestamp = value
 }
 
-// Get the ntp receive timestamp.
-func (pkg *NtpPackage) GetTransmitTimestamp() time.Time {
+// GetTransmitTimestamp get the package receive timestamp.
+func (pkg *Package) GetTransmitTimestamp() time.Time {
 	return pkg.transmitTimestamp
 }
 
-// Set the ntp receive timestamp.
-func (pkg *NtpPackage) SetTransmitTimestamp(value time.Time) {
+// SetTransmitTimestamp set the package receive timestamp.
+func (pkg *Package) SetTransmitTimestamp(value time.Time) {
 	pkg.transmitTimestamp = value
 }
 
-// Return ntp package bytes.
-func (pkg *NtpPackage) ToBytes() ([]byte, error) {
+// ToBytes converts package to bytes.
+func (pkg *Package) ToBytes() ([]byte, error) {
 	return pkg.MarshalBinary()
 }
 
-// Parse ntp package from bytes.
-func PackageFromBytes(data []byte) (*NtpPackage, error) {
-	pkg := NtpPackage{}
+// PackageFromBytes parse package from bytes.
+func PackageFromBytes(data []byte) (*Package, error) {
+	pkg := Package{}
 	err := pkg.UnmarshalBinary(data)
 	if err != nil {
 		return nil, err
@@ -241,17 +248,17 @@ func PackageFromBytes(data []byte) (*NtpPackage, error) {
 }
 
 // String implements the fmt.Stringer interface.
-func (pkg *NtpPackage) String() string {
+func (pkg *Package) String() string {
 	return fmt.Sprintf("<NtpPackage(mode=%d, version=%d, stratum=%d)>",
 		pkg.GetMode(), pkg.GetVersion(), pkg.GetStratum())
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler interface.
-func (pkg *NtpPackage) MarshalBinary() ([]byte, error) {
+func (pkg *Package) MarshalBinary() ([]byte, error) {
 	// Create encoder with network byte order
 	encoder := binary.BigEndian
 	// Create ntp package buffer
-	enc := make([]byte, 0, NTP_PACKAGE_SIZE)
+	enc := make([]byte, 0, PackageSize)
 
 	// Encode package data
 	enc = encoder.AppendUint32(enc, pkg.header)
@@ -261,28 +268,28 @@ func (pkg *NtpPackage) MarshalBinary() ([]byte, error) {
 
 	// Encode package data timestamps
 	secs, fracs := timestampToNtpSeconds(pkg.referenceTimestamp)
-	enc = encoder.AppendUint32(enc, uint32(secs))
-	enc = encoder.AppendUint32(enc, uint32(fracs))
+	enc = encoder.AppendUint32(enc, secs)
+	enc = encoder.AppendUint32(enc, fracs)
 
 	secs, fracs = timestampToNtpSeconds(pkg.originateTimestamp)
-	enc = encoder.AppendUint32(enc, uint32(secs))
-	enc = encoder.AppendUint32(enc, uint32(fracs))
+	enc = encoder.AppendUint32(enc, secs)
+	enc = encoder.AppendUint32(enc, fracs)
 
 	secs, fracs = timestampToNtpSeconds(pkg.receiveTimestamp)
-	enc = encoder.AppendUint32(enc, uint32(secs))
-	enc = encoder.AppendUint32(enc, uint32(fracs))
+	enc = encoder.AppendUint32(enc, secs)
+	enc = encoder.AppendUint32(enc, fracs)
 
 	secs, fracs = timestampToNtpSeconds(pkg.transmitTimestamp)
-	enc = encoder.AppendUint32(enc, uint32(secs))
-	enc = encoder.AppendUint32(enc, uint32(fracs))
+	enc = encoder.AppendUint32(enc, secs)
+	enc = encoder.AppendUint32(enc, fracs)
 
 	return enc, nil
 }
 
 // UnmarshalBinary implements encoding.BinaryUnmarshaler interface.
-func (pkg *NtpPackage) UnmarshalBinary(data []byte) error {
+func (pkg *Package) UnmarshalBinary(data []byte) error {
 	// Validate package size
-	if len(data) < NTP_PACKAGE_SIZE {
+	if len(data) < PackageSize {
 		return errors.New(
 			"ntp package size to short")
 	}

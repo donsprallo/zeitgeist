@@ -7,13 +7,13 @@ import (
 
 func TestPackageToBytes(t *testing.T) {
 	// Create test table; the ntp package will convert to bytes
-	// and check that the result is euqal to data.
+	// and check that the result is equal to data.
 	tables := []struct {
-		pkg  NtpPackage
+		pkg  Package
 		data []byte
 	}{
 		// Encode "HelloWorld" to hex codes
-		{NtpPackage{
+		{Package{
 			header:         0x4865_6C6C,
 			rootDelay:      0x6F57_6F72,
 			rootDispersion: 0x6C64_0000,
@@ -30,7 +30,7 @@ func TestPackageToBytes(t *testing.T) {
 		}
 
 		// Check length of bytes
-		if len(b) != NTP_PACKAGE_SIZE {
+		if len(b) != PackageSize {
 			t.Errorf("ntp package to bytes invalid size: %d", len(b))
 		}
 
@@ -45,13 +45,13 @@ func TestPackageToBytes(t *testing.T) {
 
 func TestPackageFromBytes(t *testing.T) {
 	// Create test table; the ntp package will convert to bytes
-	// and check that the result is euqal to data.
+	// and check that the result is equal to data.
 	tables := []struct {
-		pkg  NtpPackage
+		pkg  Package
 		data []byte
 	}{
 		// Encode "HelloWorld" to hex codes
-		{NtpPackage{
+		{Package{
 			header:         0x4865_6C6C,
 			rootDelay:      0x6F57_6F72,
 			rootDispersion: 0x6C64_0000,
@@ -92,18 +92,18 @@ func TestPackageFromBytes(t *testing.T) {
 }
 
 func TestSetGetLeapIndicator(t *testing.T) {
-	// Create an test values array; the ntp package leap indicator is compared
+	// Create a test values array; the ntp package leap indicator is compared
 	// with this test value. The values are constants from ntp package.
 	values := []uint32{
-		NTP_LI_NOT_SET,
-		NTP_LI_SUB_SEC,
-		NTP_LI_ADD_SEC,
-		NTP_LI_NOT_SYN,
+		LeapNotSet,
+		LeapSubSec,
+		LeapAddSec,
+		LeapNotSyn,
 	}
 
 	// Test all data in test values
 	for _, value := range values {
-		pkg := NtpPackage{}
+		pkg := Package{}
 		// First set leap indicator. Next we get and compare the
 		// value we set. This must be the same here.
 		pkg.SetLeap(value)
@@ -116,16 +116,16 @@ func TestSetGetLeapIndicator(t *testing.T) {
 }
 
 func TestSetGetVersion(t *testing.T) {
-	// Create an test values array; the ntp package version is compared
+	// Create a test values array; the ntp package version is compared
 	// with this test value.
 	values := []uint32{
-		NTP_VN_V3,
-		NTP_VN_V4,
+		VersionV3,
+		VersionV4,
 	}
 
 	// Test all data in test values
 	for _, value := range values {
-		pkg := NtpPackage{}
+		pkg := Package{}
 		// First set version. Next we get and compare the
 		// value we set. This must be the same here.
 		pkg.SetVersion(value)
@@ -138,22 +138,22 @@ func TestSetGetVersion(t *testing.T) {
 }
 
 func TestSetGetMode(t *testing.T) {
-	// Create an test values array; the ntp package version is compared
+	// Create a test values array; the ntp package version is compared
 	// with this test value.
 	values := []uint32{
-		NTP_MODE_RESERVED,
-		NTP_MODE_SYM_ACTIVE,
-		NTP_MODE_SYM_PASSIVE,
-		NTP_MODE_CLIENT,
-		NTP_MODE_SERVER,
-		NTP_MODE_BROADCAST,
-		NTP_MODE_CONTROL,
-		NTP_MODE_PRIVATE,
+		ModeReserved,
+		ModeSymActive,
+		ModeSymPassive,
+		ModeClient,
+		ModeServer,
+		ModeBroadcast,
+		ModeControl,
+		ModePrivate,
 	}
 
 	// Test all data in test values
 	for _, value := range values {
-		pkg := NtpPackage{}
+		pkg := Package{}
 		// First set mode. Next we get and compare the
 		// value we set. This must be the same here.
 		pkg.SetMode(value)
@@ -166,7 +166,7 @@ func TestSetGetMode(t *testing.T) {
 }
 
 func TestSetGetStratum(t *testing.T) {
-	// Create an test values array; the ntp package version is compared
+	// Create a test values array; the ntp package version is compared
 	// with this test value.
 	values := []uint32{
 		0,
@@ -178,7 +178,7 @@ func TestSetGetStratum(t *testing.T) {
 
 	// Test all data in test values
 	for _, value := range values {
-		pkg := NtpPackage{}
+		pkg := Package{}
 		// First set stratum. Next we get and compare the
 		// value we set. This must be the same here.
 		pkg.SetStratum(value)
