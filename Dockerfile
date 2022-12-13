@@ -12,7 +12,7 @@ COPY . .
 # Build golang time server daemon.
 RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
     go build -v -o /usr/local/bin/gotsd \
-    ./cmd/ntp-server/main.go
+    ./cmd/gotsd/main.go
 
 # Application image
 FROM golang:1.19.3-alpine3.16
