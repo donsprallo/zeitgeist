@@ -27,6 +27,11 @@ func NewRoutingTable(size int) *RoutingTable {
 	}
 }
 
+// All return all RoutingTableEntry objects from RoutingTable.
+func (t *RoutingTable) All() []RoutingTableEntry {
+	return t.entries
+}
+
 // Add adds a net.IP address and Timer to the Table. This address maps
 // a net.IP address to a specific Timer.
 func (t *RoutingTable) Add(

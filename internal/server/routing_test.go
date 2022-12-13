@@ -25,7 +25,7 @@ func (rb DummyTimer) Increment() {
 }
 
 // Implement ntp.Timer interface.
-func (rb DummyTimer) Set(t time.Time) {
+func (rb DummyTimer) Set(_ time.Time) {
 	// Do nothing here
 }
 
@@ -60,15 +60,19 @@ func TestFindTimer(t *testing.T) {
 	defaultTimer := DummyTimer{Message: "default"}
 	net1Timer := DummyTimer{Message: "net1"}
 	net2Timer := DummyTimer{Message: "net2"}
-	routing := NewStaticRouting(defaultTimer)
+
+	table := NewRoutingTable(10)
+	strategy := NewStaticRouting(
+		table, defaultTimer)
+
 	// Add timer that matches 192.168.1.0 network
-	routing.Table.MustAdd(net.IPNet{
+	strategy.Table.MustAdd(net.IPNet{
 		Mask: net.CIDRMask(24, 32),
 		IP:   net.ParseIP("192.168.1.0"),
 	}, net1Timer)
 	// Add timer that matches 192.168.2.11 host but
 	// not the 192.168.2.0 network.
-	routing.Table.MustAdd(net.IPNet{
+	strategy.Table.MustAdd(net.IPNet{
 		Mask: net.CIDRMask(32, 32),
 		IP:   net.ParseIP("192.168.2.11"),
 	}, net2Timer)
@@ -77,7 +81,7 @@ func TestFindTimer(t *testing.T) {
 	for _, table := range tables {
 		// Try to find response timer; this should always return
 		// a timer.
-		timer, err := routing.FindTimer(table.IP)
+		timer, err := strategy.FindTimer(table.IP)
 		if err != nil {
 			t.Errorf("ip[%s] err: %s",
 				table.IP, err)
