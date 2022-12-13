@@ -11,7 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type ApiServer struct {
+type Server struct {
 	Host   string       // Server hostname
 	Port   int          // Server port
 	router *mux.Router  // Server router
@@ -22,52 +22,53 @@ func NewApiServer(
 	host string,
 	port int,
 	router *mux.Router,
-) *ApiServer {
+) *Server {
 	// Create ApiServer
-	return &ApiServer{
+	return &Server{
 		Host:   host,
 		Port:   port,
 		router: router,
 	}
 }
 
-// Register all possible api routers to handle REST requests.
-func (s *ApiServer) RegisterRoutes(
+// RegisterRoutes register all possible api routers to handle REST requests.
+func (s *Server) RegisterRoutes(
 	prefix string,
 ) {
-	// Create api version 1 router from main router
+	// Create api version 1 router from main router.
 	apiV1Router := s.router.
 		PathPrefix(prefix).Subrouter()
-	reigisterApiV1Handlers(apiV1Router)
+	registerApiV1Handlers(apiV1Router)
 }
 
-func (s *ApiServer) Serve() {
-	// Create http server for REST api
+// Serve start listening the Server.
+func (s *Server) Serve() {
+	// Create http server for REST api.
 	s.server = &http.Server{
 		Handler:      s.router,
 		Addr:         s.getAddrStr(),
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
-	// Start api server
+	// Start the server by listening.
 	log.Infof("api listening on %s", s.getAddrStr())
 	if err := s.server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func (s *ApiServer) Shutdown(ctx context.Context) error {
+func (s *Server) Shutdown(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
 }
 
-func (s *ApiServer) getAddrStr() string {
+func (s *Server) getAddrStr() string {
 	return fmt.Sprintf("%s:%d", s.Host, s.Port)
 }
 
-func reigisterApiV1Handlers(router *mux.Router) {
+func registerApiV1Handlers(router *mux.Router) {
 	// Healthcheck
-	router.HandleFunc("/healthcheck",
-		healthcheck).Methods("GET")
+	router.HandleFunc("/healthcheckHandler",
+		healthcheckHandler).Methods("GET")
 
 	// Default route management
 	router.HandleFunc("/route/default",
@@ -91,17 +92,26 @@ func reigisterApiV1Handlers(router *mux.Router) {
 }
 
 // Get the healthcheck response. The healthcheck always return the same
-// result. This enable an easy way to automatically check the result.
-func healthcheck(
-	res http.ResponseWriter, req *http.Request) {
+// result. This enables an easy way to automatically check the result.
+func healthcheckHandler(
+	res http.ResponseWriter,
+	req *http.Request,
+) {
+	// Set response header.
 	res.Header().Add("Content-Type", "application/json")
-	// Always return the same result
-	json.NewEncoder(res).Encode(map[string]bool{"ok": true})
+
+	// Always return the same result.
+	err := json.NewEncoder(res).Encode(map[string]bool{"ok": true})
+	if err != nil {
+		log.Panic(err)
+	}
 }
 
 // Get the mode and time info from default route.
 func getDefaultRouteHandler(
-	res http.ResponseWriter, req *http.Request) {
+	res http.ResponseWriter,
+	req *http.Request,
+) {
 	// Write not implemented status code
 	res.WriteHeader(http.StatusNotImplemented)
 }
@@ -109,42 +119,54 @@ func getDefaultRouteHandler(
 // Set the mode to default router. On specific mode, its possible
 // to update settings.
 func updateDefaultRouteHandler(
-	res http.ResponseWriter, req *http.Request) {
+	res http.ResponseWriter,
+	req *http.Request,
+) {
 	// Write not implemented status code
 	res.WriteHeader(http.StatusNotImplemented)
 }
 
 // Get all registered routes.
 func getAllRoutesHandler(
-	res http.ResponseWriter, req *http.Request) {
+	res http.ResponseWriter,
+	req *http.Request,
+) {
 	// Write not implemented status code
 	res.WriteHeader(http.StatusNotImplemented)
 }
 
 // Create a new route.
 func newRouteHandler(
-	res http.ResponseWriter, req *http.Request) {
+	res http.ResponseWriter,
+	req *http.Request,
+) {
 	// Write not implemented status code
 	res.WriteHeader(http.StatusNotImplemented)
 }
 
-// Celete an existing route.
+// Delete an existing route.
 func deleteRouteHandler(
-	res http.ResponseWriter, req *http.Request) {
+	res http.ResponseWriter,
+	req *http.Request,
+) {
 	// Write not implemented status code
 	res.WriteHeader(http.StatusNotImplemented)
 }
 
 // Get a specific route.
 func getRouteHandler(
-	res http.ResponseWriter, req *http.Request) {
+	res http.ResponseWriter,
+	req *http.Request,
+) {
 	// Write not implemented status code
 	res.WriteHeader(http.StatusNotImplemented)
 }
 
-// Update setings of specific route.
+// Update settings of specific route.
 func updateRouteHandler(
-	res http.ResponseWriter, req *http.Request) {
+	res http.ResponseWriter,
+	req *http.Request,
+) {
 	// Write not implemented status code
 	res.WriteHeader(http.StatusNotImplemented)
 }
