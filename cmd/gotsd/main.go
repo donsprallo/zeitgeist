@@ -105,25 +105,30 @@ func main() {
 	go apiServer.Serve()
 
 	// Gracefully shutdown
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	idleConnectionsClosed := make(chan struct{})
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
 
-	// Block until SIGINT received
-	<-c
+		// Block until SIGINT received
+		<-sigint
 
-	// Create a deadline to wait for
-	wait := 10 * time.Second
-	ctx, cancel := context.WithTimeout(
-		context.Background(), wait)
-	defer cancel()
+		// Create a deadline to wait for shutdown.
+		wait := 10 * time.Second
+		ctx, cancel := context.WithTimeout(
+			context.Background(), wait)
+		defer cancel()
 
-	// Does not block if no connections, but will otherwise wait
-	// until the timeout deadline.
-	err := apiServer.Shutdown(ctx)
-	if err != nil {
-		log.Error(err)
-	}
+		// Does not block if no connections, but will otherwise wait
+		// until the timeout deadline.
+		err := apiServer.Shutdown(ctx)
+		if err != nil {
+			log.Error(err)
+		}
 
+		close(idleConnectionsClosed)
+	}()
+
+	<-idleConnectionsClosed
 	log.Info("shutting down")
-	os.Exit(0)
 }
