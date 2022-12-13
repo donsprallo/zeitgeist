@@ -110,7 +110,7 @@ func main() {
 
 	// Create ntp server and start application. The ntp server handle all
 	// ntp requests with a RoutingStrategy.
-	ntpServer := server.NewNtpServer(
+	ntpServer := server.NewServer(
 		*ntpHost, *ntpPort, routingStrategy)
 	go ntpServer.Serve()
 
