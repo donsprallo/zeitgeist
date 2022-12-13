@@ -9,23 +9,23 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// NewNtpServer creates a new ntp server instance. A ntp server is serving
+// NewServer creates a new ntp server instance. A ntp server is serving
 // on an udp port to the host interface. Each connection's ip address is
 // passed to the routing to find a specific Timer by a ruleset.
-func NewNtpServer(
+func NewServer(
 	host string,
 	port int,
 	routing RoutingStrategy,
-) *NtpServer {
-	return &NtpServer{
+) *Server {
+	return &Server{
 		host:    host,
 		port:    port,
 		routing: routing,
 	}
 }
 
-// NtpServer is the ntp server structure.
-type NtpServer struct {
+// Server is the ntp server structure.
+type Server struct {
 	host    string          // host name of ntp server to listen.
 	port    int             // port of ntp server to listen.
 	routing RoutingStrategy // routing strategy to find Timer.
@@ -34,12 +34,9 @@ type NtpServer struct {
 // Serve start serving of the ntp server. The function is not returning until
 // the server received an unhandled error. All known errors are write to log
 // and skip the current connection,
-func (s *NtpServer) Serve() {
+func (s *Server) Serve() {
 	// Setup socket server address.
-	addr, err := net.ResolveUDPAddr("udp", s.getAddrStr())
-	if err != nil {
-		log.Panic(err)
-	}
+	addr := s.getAddr()
 
 	// Listen to address with udp socket.
 	conn, err := net.ListenUDP(addr.Network(), addr)
@@ -81,14 +78,23 @@ func (s *NtpServer) Serve() {
 }
 
 // Get the server address string from host and port.
-func (s *NtpServer) getAddrStr() string {
+func (s *Server) getAddrStr() string {
 	return fmt.Sprintf("%s:%d", s.host, s.port)
+}
+
+// Get the server address from host and port.
+func (s *Server) getAddr() *net.UDPAddr {
+	addr, err := net.ResolveUDPAddr("udp", s.getAddrStr())
+	if err != nil {
+		log.Panic(err)
+	}
+	return addr
 }
 
 // Handle a ntp request from conn and remote addr. The connection must not
 // be closed after request is handled, because the server must wait for a
 // new connection.
-func (s *NtpServer) handleRequest(
+func (s *Server) handleRequest(
 	conn *net.UDPConn,
 	addr *net.UDPAddr,
 	data []byte,
