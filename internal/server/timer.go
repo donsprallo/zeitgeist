@@ -104,7 +104,7 @@ func (timer SystemTimer) Increment() {
 }
 
 // Set implements Timer.Set.
-func (timer SystemTimer) Set(t time.Time) {
+func (timer SystemTimer) Set(_ time.Time) {
 	// Do nothing here
 }
 
@@ -138,4 +138,16 @@ func PackageFromTimer(
 	dst.SetTransmitTimestamp(timer.Get())
 
 	return dst, nil
+}
+
+// TimerName map a Timer instance to corresponding string representation.
+func TimerName(timer Timer) string {
+	switch timer.(type) {
+	case *SystemTimer:
+		return "SystemTimer"
+	case SystemTimer:
+		return "SystemTimer"
+	default:
+		return "UnknownTimer"
+	}
 }
