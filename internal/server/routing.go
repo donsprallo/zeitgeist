@@ -136,11 +136,16 @@ var (
 )
 
 // NewStaticRouting create a new StaticRouting instance. A default Timer
-// must be added to be sure that we have a default ntp timer.
-func NewStaticRouting(defaultTimer Timer) *StaticRouting {
+// must be added to be sure that we have a default ntp timer. The default
+// Timer is added to the RoutingTable as default route, that handle all
+// net.IP addresses without need to add other routes.
+func NewStaticRouting(
+	table *RoutingTable,
+	defaultTimer Timer,
+) *StaticRouting {
 	// Create basic structure
 	routing := StaticRouting{
-		Table: NewRoutingTable(10),
+		Table: table,
 	}
 	// Add the default response timer to router.
 	routing.Table.MustAdd(defaultRoute, defaultTimer)

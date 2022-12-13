@@ -58,12 +58,12 @@ func init() {
 }
 
 func init() {
-	// Setup application logger
+	// Setup application logger.
 	log.SetLevel(log.DebugLevel)
 }
 
 func init() {
-	// Setup command line arguments
+	// Setup command line arguments.
 	ntpHost = flag.String(
 		"host", getEnvStr("NTP_HOST", "localhost"),
 		"ntp daemon hostname")
@@ -75,36 +75,54 @@ func init() {
 	apiPort = flag.Int(
 		"api-port", getEnvInt("API_PORT", 80),
 		"api port")
-	// Parse command line arguments
+	// Parse command line arguments.
 	flag.Parse()
 }
 
 func main() {
-	// Create routing protocol for handle requests
-	systemTimerPackage := ntp.Package{}
-	systemTimerPackage.SetVersion(ntp.VersionV3)
-	systemTimerPackage.SetMode(ntp.ModeServer)
-	systemTimerPackage.SetStratum(1)
-	systemTimerPackage.SetReferenceClockId([]byte("ABCD"))
+	// First we create a default ntp package. This is used for set up
+	// the default timers in next step. The settings here means, that
+	// the ntp server response override incoming requests with this data.
+	defaultTimerPackage := ntp.Package{}
+	defaultTimerPackage.SetVersion(ntp.VersionV3)
+	defaultTimerPackage.SetMode(ntp.ModeServer)
+	defaultTimerPackage.SetStratum(1)
+	defaultTimerPackage.SetReferenceClockId([]byte("ABCD"))
 
+	// Next we create the default timers. These timers are used for the
+	// default route we build in next step. This means that this timer
+	// is used for all requests, where no other route match ip address
+	// from requested client.
 	defaultTimer := &server.SystemTimer{
-		NTPPackage: systemTimerPackage,
+		NTPPackage: defaultTimerPackage,
 	}
 
-	routing := server.NewStaticRouting(defaultTimer)
-	// Create ntp server and start application
+	// Create routing protocol for handle requests. For this, we need to create
+	// a routing table. The table contains all ip address's and the
+	// corresponding timer instances.
+	routingTable := server.NewRoutingTable(10)
+
+	// The RoutingStrategy is used to specify, how a request and its ip
+	// address is matching a timer. The default timer is used to handle all
+	// requests matching the default route.
+	routingStrategy := server.NewStaticRouting(
+		routingTable, defaultTimer)
+
+	// Create ntp server and start application. The ntp server handle all
+	// ntp requests with a RoutingStrategy.
 	ntpServer := server.NewNtpServer(
-		*ntpHost, *ntpPort, routing)
+		*ntpHost, *ntpPort, routingStrategy)
 	go ntpServer.Serve()
 
-	// Create REST api server
+	// Now we create an api server. Here we can edit ntp server settings with
+	// a universal rest client.
 	router := mux.NewRouter()
 	apiServer := api.NewApiServer(
-		*apiHost, *apiPort, router)
+		*apiHost, *apiPort, router, routingTable)
 	apiServer.RegisterRoutes("/api/v1")
 	go apiServer.Serve()
 
-	// Gracefully shutdown
+	// Gracefully shutdown.
 	idleConnectionsClosed := make(chan struct{})
 	go func() {
 		sigint := make(chan os.Signal, 1)
@@ -129,6 +147,6 @@ func main() {
 		close(idleConnectionsClosed)
 	}()
 
+	// Block until gracefully shutdown.
 	<-idleConnectionsClosed
-	log.Info("shutting down")
 }

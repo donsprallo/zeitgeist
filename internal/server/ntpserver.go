@@ -75,6 +75,9 @@ func (s *NtpServer) Serve() {
 		// Handle connections in background.
 		go s.handleRequest(conn, rAddr, data, rxTimestamp)
 	}
+
+	// TODO: Need to gracefully shutdown
+	// log.Info("shutting down")
 }
 
 // Get the server address string from host and port.
