@@ -105,8 +105,8 @@ func (r *StaticRouting) FindTimer(
 	for i := len(r.Table.entries) - 1; i >= 0; i-- {
 		entry := r.Table.entries[i]
 		if ip.Mask(entry.IPNet.Mask).Equal(entry.IPNet.IP) {
-			log.Debugf("host[%s] euqals mask[%s] ip[%s]",
-				ip, entry.IPNet.Mask, entry.IPNet.IP)
+			log.Debugf("host with ip[%s] equal mask[%s] match",
+				ip, entry.IPNet.Mask.String())
 			return entry.Timer, nil
 		}
 	}
@@ -115,8 +115,8 @@ func (r *StaticRouting) FindTimer(
 	for i := len(r.Table.entries) - 1; i >= 0; i-- {
 		entry := r.Table.entries[i]
 		if entry.IPNet.Contains(ip) {
-			log.Debugf("host[%s] contains mask[%s] ip[%s]",
-				ip, entry.IPNet.Mask, entry.IPNet.IP)
+			log.Debugf("host with ip[%s] contains mask[%s] match",
+				ip, entry.IPNet.String())
 			return entry.Timer, nil
 		}
 	}
