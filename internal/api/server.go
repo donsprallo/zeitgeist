@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/donsprallo/gots/internal/ntp"
 	"github.com/donsprallo/gots/internal/server"
@@ -257,7 +258,7 @@ func (s *Server) getTimerHandler(
 	}
 	// Get timer by id.
 	timer := s.timers.Get(id)
-	if err != nil {
+	if timer.Timer == nil {
 		mustJsonResponse(res, ErrorResponse{
 			Message: "can not find timer by id",
 		})
@@ -273,8 +274,58 @@ func (s *Server) updateTimerHandler(
 	res http.ResponseWriter,
 	req *http.Request,
 ) {
-	// Write not implemented status code
-	res.WriteHeader(http.StatusNotImplemented)
+	// Parse query parameters.
+	vars := mux.Vars(req)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		mustJsonResponse(res, ErrorResponse{
+			Message: "invalid query id",
+		})
+		return
+	}
+	// Get timer by id.
+	timer := s.timers.Get(id)
+	if timer.Timer == nil {
+		mustJsonResponse(res, ErrorResponse{
+			Message: "can not find timer by id",
+		})
+		return
+	}
+
+	// Build response from timer type.
+	switch timer.Timer.(type) {
+	case *server.ModifyTimer:
+		// Parse body parameters for ModifyTimer.
+		body := make(map[string]string, 0)
+		err := json.NewDecoder(req.Body).Decode(&body)
+		if err != nil {
+			mustJsonResponse(res, ErrorResponse{
+				Message: "can not decode body data",
+			})
+			return
+		}
+		// Parse time value from body
+		timeLayout := time.RFC822
+		timeVal, err := time.Parse(
+			timeLayout, body["time"])
+		if err != nil {
+			mustJsonResponse(res, ErrorResponse{
+				Message: "can not parse time",
+			})
+			return
+		}
+		// Set timer with value.
+		timer.Timer.Set(timeVal)
+		mustJsonResponse(res, MessageResponse{
+			Message: "timer update successful",
+		})
+		return
+	default:
+		mustJsonResponse(res, ErrorResponse{
+			Message: "timer can not modified",
+		})
+		return
+	}
 }
 
 // Get the mode and time info from default route.

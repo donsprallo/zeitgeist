@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/donsprallo/gots/internal/server"
 	"net/http"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -67,7 +68,7 @@ func mustJsonTimerResponse(
 	response := TimerValueResponse{
 		Id:    id,
 		Type:  server.TimerName(timer),
-		Value: timer.Get().String(),
+		Value: timer.Get().Format(time.RFC3339),
 	}
 	mustJsonResponse(res, response)
 }
