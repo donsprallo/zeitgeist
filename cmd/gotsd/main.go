@@ -123,7 +123,7 @@ func main() {
 	// a universal rest client.
 	router := mux.NewRouter()
 	apiServer := api.NewApiServer(
-		*apiHost, *apiPort, router, routingTable)
+		*apiHost, *apiPort, router, routingTable, timers)
 	apiServer.RegisterRoutes("/api/v1")
 	go apiServer.Serve()
 
@@ -155,10 +155,10 @@ func main() {
 		close(idleConnectionsClosed)
 	}()
 
-	// Loop infinity.
+	// Loop infinity until gracefully shutdown.
 	for {
 		select {
-		// On ticker ticks, we update all timers.
+		// On ticker ticks, update all timers.
 		case <-timerTicker.C:
 			timers.AllUpdate()
 		// On gracefully shutdown.
