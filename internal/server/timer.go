@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"time"
 
 	"github.com/donsprallo/gots/internal/ntp"
@@ -67,6 +68,20 @@ func (c *TimerCollection) Get(id int) TimerCollectionEntry {
 	}
 	// No timer found.
 	return TimerCollectionEntry{}
+}
+
+// Delete a Timer from collection by id.
+func (c *TimerCollection) Delete(id int) error {
+	// Iterate all timers until id is found.
+	for idx, entry := range c.entries {
+		if entry.Id == id {
+			c.Remove(idx)
+			return nil
+		}
+	}
+	// Deletion failed
+	return errors.New(
+		"can not delete timer by id")
 }
 
 // Remove a Timer from collection by index.
@@ -153,6 +168,7 @@ func (timer *SystemTimer) Get() time.Time {
 // generate ntp.Package.
 type ModifyTimer struct {
 	NTPPackage ntp.Package
+	time       time.Time
 }
 
 // Package implements Timer.Package interface.
@@ -162,17 +178,18 @@ func (timer *ModifyTimer) Package() *ntp.Package {
 
 // Update implements Timer.Update interface.
 func (timer *ModifyTimer) Update() {
-	// Do nothing here
+	// Increment timer by one
+	timer.time.Add(1 * time.Second)
 }
 
 // Set implements Timer.Set interface.
-func (timer *ModifyTimer) Set(_ time.Time) {
-	// Do nothing here
+func (timer *ModifyTimer) Set(t time.Time) {
+	timer.time = t
 }
 
 // Get implements Timer.Get interface.
 func (timer *ModifyTimer) Get() time.Time {
-	return time.Now()
+	return timer.time
 }
 
 // PackageFromTimer convert a ntp.Package from dst ntp.Package to
