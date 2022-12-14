@@ -108,6 +108,11 @@ func main() {
 	routingStrategy := server.NewStaticRouting(
 		routingTable, defaultTimer)
 
+	// Create timer collection to collect timers. We need to manage all timers
+	// and do this with this collection.
+	timers := server.NewTimerCollection(10)
+	timers.Add(defaultTimer)
+
 	// Create ntp server and start application. The ntp server handle all
 	// ntp requests with a RoutingStrategy.
 	ntpServer := server.NewServer(
@@ -121,6 +126,9 @@ func main() {
 		*apiHost, *apiPort, router, routingTable)
 	apiServer.RegisterRoutes("/api/v1")
 	go apiServer.Serve()
+
+	// Create ticker to update all timers every second.
+	timerTicker := time.NewTicker(1 * time.Second)
 
 	// Gracefully shutdown.
 	idleConnectionsClosed := make(chan struct{})
@@ -147,6 +155,15 @@ func main() {
 		close(idleConnectionsClosed)
 	}()
 
-	// Block until gracefully shutdown.
-	<-idleConnectionsClosed
+	// Loop infinity.
+	for {
+		select {
+		// On ticker ticks, we update all timers.
+		case <-timerTicker.C:
+			timers.AllUpdate()
+		// On gracefully shutdown.
+		case <-idleConnectionsClosed:
+			break
+		}
+	}
 }

@@ -77,9 +77,16 @@ func (c *TimerCollection) Remove(index int) {
 	c.entries = append(entries, c.entries[index+1:]...)
 }
 
-// All return all TimerCollectionEntry instances added to collection..
+// All return all TimerCollectionEntry instances added to collection.
 func (c *TimerCollection) All() []TimerCollectionEntry {
 	return c.entries
+}
+
+// AllUpdate updates all Timer instances added to collection.
+func (c *TimerCollection) AllUpdate() {
+	for _, entry := range c.entries {
+		entry.Timer.Update()
+	}
 }
 
 // Length return the collection entry length.
