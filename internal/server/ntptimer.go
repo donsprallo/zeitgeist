@@ -24,6 +24,68 @@ type Timer interface {
 	Get() time.Time
 }
 
+type TimerCollectionEntry struct {
+	Id    int   // Index of the Timer
+	Timer Timer // Timer of the entry
+}
+
+// TimerCollection is a collection of Timer instances.
+type TimerCollection struct {
+	idx     int                    // Index value of the next Timer
+	entries []TimerCollectionEntry // A slice of Timer
+}
+
+// NewTimerCollection creates a new TimerCollection with a predefined size.
+// The size of the collection is not fixed to size.
+func NewTimerCollection(size int) *TimerCollection {
+	return &TimerCollection{
+		idx:     0,
+		entries: make([]TimerCollectionEntry, 0, size),
+	}
+}
+
+// Add append a Timer to the collection. Here each Timer get a unique entry
+// to identify the Timer.
+func (c *TimerCollection) Add(timer Timer) int {
+	id := c.idx
+	c.idx++
+	c.entries = append(c.entries, TimerCollectionEntry{
+		Id:    id,
+		Timer: timer,
+	})
+	return id
+}
+
+// Get the TimerCollectionEntry by id.
+func (c *TimerCollection) Get(id int) TimerCollectionEntry {
+	// Iterate all timers until id is found.
+	for _, entry := range c.entries {
+		if entry.Id == id {
+			return entry
+		}
+	}
+	// No timer found.
+	return TimerCollectionEntry{}
+}
+
+// Remove a Timer from collection by index.
+func (c *TimerCollection) Remove(index int) {
+	length := len(c.entries) - 1
+	entries := make([]TimerCollectionEntry, 0, length)
+	entries = append(entries, c.entries[:index]...)
+	c.entries = append(entries, c.entries[index+1:]...)
+}
+
+// All return all TimerCollectionEntry instances added to collection..
+func (c *TimerCollection) All() []TimerCollectionEntry {
+	return c.entries
+}
+
+// Length return the collection entry length.
+func (c *TimerCollection) Length() int {
+	return len(c.entries)
+}
+
 // SystemTimer implements the Timer interface. A SystemTimer generates time
 // values from the system time as source. The source can be used to generate
 // ntp packets.

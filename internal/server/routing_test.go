@@ -1,43 +1,9 @@
 package server
 
 import (
-	"fmt"
 	"net"
 	"testing"
-	"time"
-
-	"github.com/donsprallo/gots/internal/ntp"
 )
-
-// Just a dummy to mock response timer.
-type DummyTimer struct {
-	Message string
-}
-
-// Implement ntp.Timer interface.
-func (rb DummyTimer) Package() *ntp.Package {
-	return nil
-}
-
-// Implement ntp.Timer interface.
-func (rb DummyTimer) Increment() {
-	// Do nothing here
-}
-
-// Implement ntp.Timer interface.
-func (rb DummyTimer) Set(t time.Time) {
-	// Do nothing here
-}
-
-// Implement ntp.Timer interface.
-func (rb DummyTimer) Get() time.Time {
-	return time.Time{}
-}
-
-// Implement stringer interface.
-func (rb DummyTimer) String() string {
-	return fmt.Sprintf(rb.Message)
-}
 
 func TestFindTimer(t *testing.T) {
 	// Create test Table; The message is an identifier, to check which
