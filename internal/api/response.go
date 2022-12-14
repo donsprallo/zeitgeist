@@ -2,23 +2,18 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/donsprallo/gots/internal/server"
 	"net/http"
 
 	log "github.com/sirupsen/logrus"
 )
 
-// mustJsonResponse encode a value into json string and write the result
-// to response. This must always be made. An error will log with panic.
-func mustJsonResponse(res http.ResponseWriter, v any) {
-	// Set response header.
-	res.Header().Add("Content-Type", "application/json")
+type MessageResponse struct {
+	Message string `json:"message"`
+}
 
-	// Encode value into json string and write to response. This
-	// must always be made. On error, we log with panic.
-	err := json.NewEncoder(res).Encode(v)
-	if err != nil {
-		log.Panic(err)
-	}
+type ErrorResponse struct {
+	Message string `json:"message"`
 }
 
 type TimerResponse struct {
@@ -27,7 +22,8 @@ type TimerResponse struct {
 }
 
 type TimerValueResponse struct {
-	TimerResponse
+	Id    int    `json:"id"`
+	Type  string `json:"type"`
 	Value string `json:"value"`
 }
 
@@ -45,4 +41,33 @@ type RouteResponse struct {
 type RoutesResponse struct {
 	Length int             `json:"length"`
 	Routes []RouteResponse `json:"routes"`
+}
+
+// mustJsonResponse encode a value into json string and write the result
+// to response. This must always be made. An error will log with panic.
+func mustJsonResponse(res http.ResponseWriter, v any) {
+	// Set response header.
+	res.Header().Add("Content-Type", "application/json")
+
+	// Encode value into json string and write to response. This
+	// must always be made. On error, we log with panic.
+	err := json.NewEncoder(res).Encode(v)
+	if err != nil {
+		log.Panic(err)
+	}
+}
+
+// mustJsonTimerResponse encode a Timer instance to json string and write the
+// result to response. This must always be made. An error will log with panic.
+func mustJsonTimerResponse(
+	res http.ResponseWriter,
+	timer server.Timer, id int,
+) {
+	// Build response with timer data.
+	response := TimerValueResponse{
+		Id:    id,
+		Type:  server.TimerName(timer),
+		Value: timer.Get().String(),
+	}
+	mustJsonResponse(res, response)
 }
