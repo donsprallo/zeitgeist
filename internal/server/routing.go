@@ -7,7 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// RoutingTableEntry is a entry in a RoutingTable. Each entry contains
+// RoutingTableEntry is an entry in a RoutingTable. Each entry contains
 // information for a RoutingStrategy to decide, which Timer instance
 // can be found.
 type RoutingTableEntry struct {

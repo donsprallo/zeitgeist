@@ -12,27 +12,27 @@ type DummyTimer struct {
 	Message string
 }
 
-// Implement ntp.Timer interface.
+// Package implements Timer.Package interface.
 func (t DummyTimer) Package() *ntp.Package {
 	return nil
 }
 
-// Implement ntp.Timer interface.
-func (t DummyTimer) Increment() {
+// Update implements Timer.Update interface.
+func (t DummyTimer) Update() {
 	// Do nothing here
 }
 
-// Implement ntp.Timer interface.
+// Set implements Timer.Set interface.
 func (t DummyTimer) Set(_ time.Time) {
 	// Do nothing here
 }
 
-// Implement ntp.Timer interface.
+// Get implements Timer.Get interface.
 func (t DummyTimer) Get() time.Time {
 	return time.Time{}
 }
 
-// Implement stringer interface.
+// String implements fmt.Stringer interface.
 func (t DummyTimer) String() string {
 	return fmt.Sprintf(t.Message)
 }

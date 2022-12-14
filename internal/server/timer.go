@@ -14,8 +14,9 @@ type Timer interface {
 	// Package get the internal ntp.Package from Timer.
 	Package() *ntp.Package
 
-	// Increment the Timer by one second.
-	Increment()
+	// Update the Timer for example by increment one second. Therefore,
+	// this method must be called in an interval of one second.
+	Update()
 
 	// Set the timer to time.Time.
 	Set(t time.Time)
@@ -93,22 +94,22 @@ type SystemTimer struct {
 	NTPPackage ntp.Package
 }
 
-// Package implements Timer.Package.
+// Package implements Timer.Package interface.
 func (timer SystemTimer) Package() *ntp.Package {
 	return &timer.NTPPackage
 }
 
-// Increment implements Timer.Increment.
-func (timer SystemTimer) Increment() {
+// Update implements Timer.Update interface.
+func (timer SystemTimer) Update() {
 	// Do nothing here
 }
 
-// Set implements Timer.Set.
+// Set implements Timer.Set interface.
 func (timer SystemTimer) Set(_ time.Time) {
 	// Do nothing here
 }
 
-// Get implements Timer.Get.
+// Get implements Timer.Get interface.
 func (timer SystemTimer) Get() time.Time {
 	return time.Now()
 }
