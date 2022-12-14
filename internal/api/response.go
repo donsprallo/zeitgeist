@@ -21,13 +21,28 @@ func mustJsonResponse(res http.ResponseWriter, v any) {
 	}
 }
 
-type Route struct {
-	Id     int    `json:"id"`
-	Subnet string `json:"subnet"`
-	Timer  string `json:"timer"`
+type TimerResponse struct {
+	Id   int    `json:"id"`
+	Type string `json:"type"`
 }
 
-type Routes struct {
-	Length int     `json:"length"`
-	Routes []Route `json:"routes"`
+type TimerValueResponse struct {
+	TimerResponse
+	Value string `json:"value"`
+}
+
+type TimersResponse struct {
+	Length int             `json:"length"`
+	Timers []TimerResponse `json:"timers"`
+}
+
+type RouteResponse struct {
+	Id     int           `json:"id"`
+	Subnet string        `json:"subnet"`
+	Timer  TimerResponse `json:"timer"`
+}
+
+type RoutesResponse struct {
+	Length int             `json:"length"`
+	Routes []RouteResponse `json:"routes"`
 }
