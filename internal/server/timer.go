@@ -94,30 +94,84 @@ func (c *TimerCollection) Length() int {
 	return len(c.entries)
 }
 
+// NtpTimer implements the Timer interface. A NtpTimer generates time values
+// from the remote ntp server as source. The timer can be used to generate
+// ntp.Package.
+type NtpTimer struct {
+	NTPPackage ntp.Package
+}
+
+// Package implements Timer.Package interface.
+func (timer *NtpTimer) Package() *ntp.Package {
+	return &timer.NTPPackage
+}
+
+// Update implements Timer.Update interface.
+func (timer *NtpTimer) Update() {
+	// Do nothing here
+}
+
+// Set implements Timer.Set interface.
+func (timer *NtpTimer) Set(_ time.Time) {
+	// Do nothing here
+}
+
+// Get implements Timer.Get interface.
+func (timer *NtpTimer) Get() time.Time {
+	return time.Now()
+}
+
 // SystemTimer implements the Timer interface. A SystemTimer generates time
 // values from the system time as source. The source can be used to generate
-// ntp packets.
+// ntp.Package.
 type SystemTimer struct {
 	NTPPackage ntp.Package
 }
 
 // Package implements Timer.Package interface.
-func (timer SystemTimer) Package() *ntp.Package {
+func (timer *SystemTimer) Package() *ntp.Package {
 	return &timer.NTPPackage
 }
 
 // Update implements Timer.Update interface.
-func (timer SystemTimer) Update() {
+func (timer *SystemTimer) Update() {
 	// Do nothing here
 }
 
 // Set implements Timer.Set interface.
-func (timer SystemTimer) Set(_ time.Time) {
+func (timer *SystemTimer) Set(_ time.Time) {
 	// Do nothing here
 }
 
 // Get implements Timer.Get interface.
-func (timer SystemTimer) Get() time.Time {
+func (timer *SystemTimer) Get() time.Time {
+	return time.Now()
+}
+
+// ModifyTimer implements the Timer interface. A ModifyTimer generates time
+// values from free settable timestamp as source. The timer can be used to#
+// generate ntp.Package.
+type ModifyTimer struct {
+	NTPPackage ntp.Package
+}
+
+// Package implements Timer.Package interface.
+func (timer *ModifyTimer) Package() *ntp.Package {
+	return &timer.NTPPackage
+}
+
+// Update implements Timer.Update interface.
+func (timer *ModifyTimer) Update() {
+	// Do nothing here
+}
+
+// Set implements Timer.Set interface.
+func (timer *ModifyTimer) Set(_ time.Time) {
+	// Do nothing here
+}
+
+// Get implements Timer.Get interface.
+func (timer *ModifyTimer) Get() time.Time {
 	return time.Now()
 }
 
@@ -151,10 +205,12 @@ func PackageFromTimer(
 // TimerName map a Timer instance to corresponding string representation.
 func TimerName(timer Timer) string {
 	switch timer.(type) {
+	case *NtpTimer:
+		return "NtpTimer"
 	case *SystemTimer:
 		return "SystemTimer"
-	case SystemTimer:
-		return "SystemTimer"
+	case *ModifyTimer:
+		return "ModifyTimer"
 	default:
 		return "UnknownTimer"
 	}
