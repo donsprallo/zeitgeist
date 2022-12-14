@@ -168,7 +168,7 @@ func (timer *SystemTimer) Get() time.Time {
 // generate ntp.Package.
 type ModifyTimer struct {
 	NTPPackage ntp.Package
-	time       time.Time
+	Time       time.Time
 }
 
 // Package implements Timer.Package interface.
@@ -179,17 +179,17 @@ func (timer *ModifyTimer) Package() *ntp.Package {
 // Update implements Timer.Update interface.
 func (timer *ModifyTimer) Update() {
 	// Increment timer by one
-	timer.time.Add(1 * time.Second)
+	timer.Time = timer.Time.Add(1 * time.Second)
 }
 
 // Set implements Timer.Set interface.
 func (timer *ModifyTimer) Set(t time.Time) {
-	timer.time = t
+	timer.Time = t
 }
 
 // Get implements Timer.Get interface.
 func (timer *ModifyTimer) Get() time.Time {
-	return timer.time
+	return timer.Time
 }
 
 // PackageFromTimer convert a ntp.Package from dst ntp.Package to
