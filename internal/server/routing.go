@@ -132,11 +132,11 @@ var (
 	}
 	ipv4Route = net.IPNet{
 		Mask: net.CIDRMask(24, 32),
-		IP:   net.ParseIP("127.0.0.1"),
+		IP:   net.ParseIP("127.0.0.0"),
 	}
 	ipv6Route = net.IPNet{
 		Mask: net.CIDRMask(120, 128),
-		IP:   net.ParseIP("::1"),
+		IP:   net.ParseIP("::"),
 	}
 )
 
