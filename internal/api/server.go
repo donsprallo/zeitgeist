@@ -379,13 +379,57 @@ func (s *Server) getAllRoutesHandler(
 	mustJsonResponse(res, response)
 }
 
+type NewRouteRequest struct {
+	TimerId int    `json:"timerId"`
+	Subnet  string `json:"subnet"`
+}
+
 // Create a new route.
 func (s *Server) newRouteHandler(
 	res http.ResponseWriter,
 	req *http.Request,
 ) {
-	// Write not implemented status code
-	res.WriteHeader(http.StatusNotImplemented)
+	// Parse body data.
+	var routeRequest NewRouteRequest
+	err := json.NewDecoder(req.Body).Decode(&routeRequest)
+	if err != nil {
+		mustJsonResponse(res, ErrorResponse{
+			Message: "can not decode body data",
+		})
+		return
+	}
+
+	// Find timer by id.
+	timer := s.timers.Get(routeRequest.TimerId)
+	if timer.Timer == nil {
+		mustJsonResponse(res, ErrorResponse{
+			Message: "can not find timer",
+		})
+		return
+	}
+
+	// Parse subnet to net.IPNet.
+	_, ipNet, err := net.ParseCIDR(routeRequest.Subnet)
+	if err != nil {
+		mustJsonResponse(res, ErrorResponse{
+			Message: "can not parse subnet",
+		})
+		return
+	}
+
+	// Add net.IPNet to routing and map to timer instance.
+	err = s.routes.Add(*ipNet, timer.Timer)
+	if err != nil {
+		mustJsonResponse(res, ErrorResponse{
+			Message: "route with subnet exist",
+		})
+		return
+	}
+
+	// Build success response.
+	mustJsonResponse(res, MessageResponse{
+		Message: "create new route success",
+	})
 }
 
 // Delete an existing route.
