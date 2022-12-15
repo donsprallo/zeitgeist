@@ -16,6 +16,16 @@ type ErrorResponse struct {
 	Message string `json:"message"`
 }
 
+// Response errors.
+var (
+	QueryParameterError = ErrorResponse{
+		Message: "invalid query parameter"}
+	BodyDecodeError = ErrorResponse{
+		Message: "can not decode body data"}
+	NotFoundError = ErrorResponse{
+		Message: "entity not found"}
+)
+
 // Create a ntp.Package from request data.
 func packageFromReq(_ *http.Request) *ntp.Package {
 	// Create default ntp package.
