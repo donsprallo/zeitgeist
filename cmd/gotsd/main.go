@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/donsprallo/gots/internal/web/api/routes"
 	"os"
 	"os/signal"
 	"strconv"
@@ -119,12 +120,30 @@ func main() {
 		*ntpHost, *ntpPort, routingStrategy)
 	go ntpServer.Serve()
 
-	// Now we create a web server. Here we can edit ntp server settings with
-	// a universal rest client.
+	// Now we create a web server. First we need a router that handle http
+	// requests. The strict slash option is needed here. This means, that
+	// a trailing slash in "/route/" is automatically redirect to "/route".
+	// This is useful for path naming convention on endpoint registration.
 	router := mux.NewRouter()
+	router.StrictSlash(true)
+
+	// For the web api we need to create endpoints. An endpoint is a collection
+	// of logically related functions for a web API.
+	apiHealth := routes.NewHealthcheckEndpoint()
+	apiTimer := routes.NewTimerEndpoint(timers)
+	apiRoute := routes.NewRouteEndpoint(timers, routingTable)
+
+	// We still need a web server so that we can deliver our routes.
 	webServer := web.NewServer(
-		*webHost, *webPort, router, routingTable, timers)
-	webServer.RegisterRoutes("/api/v1")
+		*webHost, *webPort, router)
+
+	// The API endpoints must be registered with the web server. Here we define
+	// a prefix under which address the endpoint can be reached.
+	webServer.RegisterEndpoint("/api/v1/healthcheck", apiHealth)
+	webServer.RegisterEndpoint("/api/v1/timer", apiTimer)
+	webServer.RegisterEndpoint("/api/v1/route", apiRoute)
+
+	// Now we can start our webserver in background.
 	go webServer.Serve()
 
 	// Create ticker to update all timers every second.
@@ -136,7 +155,7 @@ func main() {
 		sigint := make(chan os.Signal, 1)
 		signal.Notify(sigint, os.Interrupt)
 
-		// Block until SIGINT received
+		// Block until SIGINT received.
 		<-sigint
 
 		// Create a deadline to wait for shutdown.
