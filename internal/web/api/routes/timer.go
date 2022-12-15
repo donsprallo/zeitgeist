@@ -212,9 +212,8 @@ func (e *TimerEndpoint) updateTimer(
 		body := make(map[string]string, 0)
 		err := json.NewDecoder(r.Body).Decode(&body)
 		if err != nil {
-			api.MustJsonResponse(w, ErrorResponse{
-				Message: "can not decode body data",
-			}, http.StatusBadRequest)
+			api.MustJsonResponse(
+				w, BodyDecodeError, http.StatusBadRequest)
 			return
 		}
 		// Parse time value from body

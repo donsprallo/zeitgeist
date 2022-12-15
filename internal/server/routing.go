@@ -11,18 +11,31 @@ import (
 // information for a RoutingStrategy to decide, which Timer instance
 // can be found.
 type RoutingTableEntry struct {
-	IPNet net.IPNet // IPNet is the net.IP and net.IPMask to match by RoutingStrategy.
-	Timer Timer     // Timer is a Timer instance returned by RoutingStrategy.
+	Id      int       // The unique identifier of the entry.
+	IPNet   net.IPNet // IPNet is the net.IP and net.IPMask to match by RoutingStrategy.
+	Timer   Timer     // Timer is a Timer instance returned by RoutingStrategy.
+	TimerId int
+}
+
+func (e *RoutingTableEntry) SetTimer(timer Timer, timerId int) {
+	e.Timer = timer
+	e.TimerId = timerId
+}
+
+func (e *RoutingTableEntry) SetIPNet(ipNet net.IPNet) {
+	e.IPNet = ipNet
 }
 
 // RoutingTable is a collection of RoutingTableEntry.
 type RoutingTable struct {
+	nextId  int
 	entries []RoutingTableEntry
 }
 
 // NewRoutingTable create a new RoutingTable instance with size.
 func NewRoutingTable(size int) *RoutingTable {
 	return &RoutingTable{
+		nextId:  0,
 		entries: make([]RoutingTableEntry, 0, size),
 	}
 }
@@ -37,6 +50,7 @@ func (t *RoutingTable) All() []RoutingTableEntry {
 func (t *RoutingTable) Add(
 	ipNet net.IPNet,
 	timer Timer,
+	timerId int,
 ) error {
 	// IP address must be unique in routing Table.
 	if t.Contains(ipNet) {
@@ -45,10 +59,33 @@ func (t *RoutingTable) Add(
 	}
 	// Add entry to routing Table.
 	t.entries = append(t.entries, RoutingTableEntry{
-		IPNet: ipNet,
-		Timer: timer,
+		Id:      t.nextId,
+		IPNet:   ipNet,
+		Timer:   timer,
+		TimerId: timerId,
 	})
+	t.nextId++
 	return nil
+}
+
+func (t *RoutingTable) Get(id int) *RoutingTableEntry {
+	for _, entry := range t.entries {
+		if entry.Id == id {
+			return &entry
+		}
+	}
+	return nil
+}
+
+func (t *RoutingTable) Set(id int, timer Timer, timerId int) error {
+	for idx, entry := range t.entries {
+		if entry.Id == id {
+			t.entries[idx].Timer = timer
+			t.entries[idx].TimerId = timerId
+			return nil
+		}
+	}
+	return errors.New("no route found by id")
 }
 
 // MustAdd works how RoutingTable.Add but on an error a panic is used.
@@ -57,8 +94,9 @@ func (t *RoutingTable) Add(
 func (t *RoutingTable) MustAdd(
 	ipNet net.IPNet,
 	timer Timer,
+	timerId int,
 ) {
-	err := t.Add(ipNet, timer)
+	err := t.Add(ipNet, timer, timerId)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -106,7 +144,7 @@ func (r *StaticRouting) FindTimer(
 		entry := r.Table.entries[i]
 		if ip.Mask(entry.IPNet.Mask).Equal(entry.IPNet.IP) {
 			log.Debugf("host with ip[%s] equal mask[%s] match",
-				ip, entry.IPNet.Mask.String())
+				ip, entry.IPNet.String())
 			return entry.Timer, nil
 		}
 	}
@@ -147,16 +185,17 @@ var (
 func NewStaticRouting(
 	table *RoutingTable,
 	defaultTimer Timer,
+	timerId int,
 ) *StaticRouting {
 	// Create basic structure
 	routing := StaticRouting{
 		Table: table,
 	}
 	// Add the default response timer to router.
-	routing.Table.MustAdd(defaultRoute, defaultTimer)
+	routing.Table.MustAdd(defaultRoute, defaultTimer, timerId)
 	// Add IPv4 loop back address.
-	routing.Table.MustAdd(ipv4Route, defaultTimer)
+	routing.Table.MustAdd(ipv4Route, defaultTimer, timerId)
 	// Add IPv6 loop back address.
-	routing.Table.MustAdd(ipv6Route, defaultTimer)
+	routing.Table.MustAdd(ipv6Route, defaultTimer, timerId)
 	return &routing
 }

@@ -29,19 +29,19 @@ func TestFindTimer(t *testing.T) {
 
 	table := NewRoutingTable(10)
 	strategy := NewStaticRouting(
-		table, defaultTimer)
+		table, defaultTimer, 0)
 
 	// Add timer that matches 192.168.1.0 network
 	strategy.Table.MustAdd(net.IPNet{
 		Mask: net.CIDRMask(24, 32),
 		IP:   net.ParseIP("192.168.1.0"),
-	}, net1Timer)
+	}, net1Timer, 1)
 	// Add timer that matches 192.168.2.11 host but
 	// not the 192.168.2.0 network.
 	strategy.Table.MustAdd(net.IPNet{
 		Mask: net.CIDRMask(32, 32),
 		IP:   net.ParseIP("192.168.2.11"),
-	}, net2Timer)
+	}, net2Timer, 2)
 
 	// Test all values
 	for _, table := range tables {

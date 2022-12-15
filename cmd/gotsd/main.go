@@ -103,16 +103,17 @@ func main() {
 	// corresponding timer instances.
 	routingTable := server.NewRoutingTable(10)
 
+	// Create timer collection to collect timers. We need to manage all timers
+	// and do this with this collection. The timer id is a unique identifier
+	// for the timer.
+	timers := server.NewTimerCollection(10)
+	timerId := timers.Add(defaultTimer)
+
 	// The RoutingStrategy is used to specify, how a request and its ip
 	// address is matching a timer. The default timer is used to handle all
 	// requests matching the default route.
 	routingStrategy := server.NewStaticRouting(
-		routingTable, defaultTimer)
-
-	// Create timer collection to collect timers. We need to manage all timers
-	// and do this with this collection.
-	timers := server.NewTimerCollection(10)
-	timers.Add(defaultTimer)
+		routingTable, defaultTimer, timerId)
 
 	// Create ntp server and start application. The ntp server handle all
 	// ntp requests with a RoutingStrategy.

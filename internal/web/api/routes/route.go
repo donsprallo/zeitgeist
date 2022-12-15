@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"net"
 	"net/http"
+	"strconv"
 )
 
 type RouteResponse struct {
@@ -95,11 +96,10 @@ func (e *RouteEndpoint) getAllRoutes(
 	// string representation.
 	for idx, entry := range routes {
 		response.Routes[idx] = RouteResponse{
-			Id:     idx,
+			Id:     entry.Id,
 			Subnet: entry.IPNet.String(),
-			// TODO: We can not get timer id here
 			Timer: TimerResponse{
-				Id:   -1,
+				Id:   entry.TimerId,
 				Type: server.TimerName(entry.Timer),
 			},
 		}
@@ -122,9 +122,8 @@ func (e *RouteEndpoint) newRoute(
 	var routeRequest NewRouteRequest
 	err := json.NewDecoder(r.Body).Decode(&routeRequest)
 	if err != nil {
-		api.MustJsonResponse(w, ErrorResponse{
-			Message: "can not decode body data",
-		}, http.StatusBadRequest)
+		api.MustJsonResponse(
+			w, BodyDecodeError, http.StatusBadRequest)
 		return
 	}
 
@@ -133,7 +132,7 @@ func (e *RouteEndpoint) newRoute(
 	if timer.Timer == nil {
 		api.MustJsonResponse(w, ErrorResponse{
 			Message: "can not find timer",
-		}, http.StatusNoContent)
+		}, http.StatusBadRequest)
 		return
 	}
 
@@ -147,7 +146,7 @@ func (e *RouteEndpoint) newRoute(
 	}
 
 	// Add net.IPNet to routing and map to timer instance.
-	err = e.routes.Add(*ipNet, timer.Timer)
+	err = e.routes.Add(*ipNet, timer.Timer, timer.Id)
 	if err != nil {
 		api.MustJsonResponse(w, ErrorResponse{
 			Message: "route with subnet exist",
@@ -177,10 +176,51 @@ func (e *RouteEndpoint) getRoute(
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+type UpdateRouteRequest struct {
+	TimerId int `json:"timerId"`
+}
+
 // Update settings of specific route.
 func (e *RouteEndpoint) updateRoute(
-	w http.ResponseWriter, _ *http.Request,
+	w http.ResponseWriter, r *http.Request,
 ) {
-	// Write not implemented status code
-	w.WriteHeader(http.StatusNotImplemented)
+	// Parse query parameters.
+	var vars = mux.Vars(r)
+	routeId, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		api.MustJsonResponse(
+			w, QueryParameterError, http.StatusBadRequest)
+		return
+	}
+
+	// Decode body data.
+	var request UpdateRouteRequest
+	err = json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		api.MustJsonResponse(
+			w, BodyDecodeError, http.StatusBadRequest)
+		return
+	}
+
+	// Find timer by id.
+	timer := e.timers.Get(request.TimerId)
+	if timer.Timer == nil {
+		api.MustJsonResponse(
+			w, NotFoundError, http.StatusBadRequest)
+		return
+	}
+
+	// Find route by id and update its timer.
+	err = e.routes.Set(
+		routeId, timer.Timer, timer.Id)
+	if err != nil {
+		api.MustJsonResponse(
+			w, NotFoundError, http.StatusBadRequest)
+		return
+	}
+
+	// Send success response.
+	api.MustJsonResponse(w, MessageResponse{
+		Message: "route updated successful",
+	}, http.StatusOK)
 }
