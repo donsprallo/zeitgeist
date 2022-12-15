@@ -18,7 +18,13 @@ type ErrorResponse struct {
 
 // Create a ntp.Package from request data.
 func packageFromReq(_ *http.Request) *ntp.Package {
-	return &ntp.Package{}
+	// Create default ntp package.
+	var pkg ntp.Package
+	pkg.SetVersion(ntp.VersionV3)
+	pkg.SetMode(ntp.ModeServer)
+	pkg.SetStratum(1)
+	pkg.SetReferenceClockId([]byte("NICO"))
+	return &pkg
 }
 
 // mustJsonTimerResponse encode a Timer instance to json string and write the

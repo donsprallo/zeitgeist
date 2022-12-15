@@ -88,7 +88,7 @@ func main() {
 	defaultTimerPackage.SetVersion(ntp.VersionV3)
 	defaultTimerPackage.SetMode(ntp.ModeServer)
 	defaultTimerPackage.SetStratum(1)
-	defaultTimerPackage.SetReferenceClockId([]byte("ABCD"))
+	defaultTimerPackage.SetReferenceClockId([]byte("NICO"))
 
 	// Next we create the default timers. These timers are used for the
 	// default route we build in next step. This means that this timer
