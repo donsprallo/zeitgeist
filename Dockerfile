@@ -17,6 +17,10 @@ RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
 # Application image
 FROM golang:1.19.3-alpine3.16
 
+LABEL "org.opencontainers.image.source"="https://github.com/donsprallo/gots"
+LABEL "version"="0.0.0"
+LABEL "description"="a development NTP time server"
+
 RUN apk add --no-cache \
     ca-certificates bash
 
