@@ -1,5 +1,5 @@
 # Builder stage
-FROM golang:1.19.3-bullseye AS BUILDER
+FROM golang:1.19.4-bullseye AS BUILDER
 
 WORKDIR /usr/src/app
 
@@ -15,7 +15,7 @@ RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
     ./cmd/gotsd/main.go
 
 # Application image
-FROM golang:1.19.3-alpine3.16
+FROM golang:1.19.4-alpine3.17
 
 LABEL "org.opencontainers.image.source"="https://github.com/donsprallo/gots"
 LABEL "version"="0.0.0"
