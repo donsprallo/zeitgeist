@@ -1,4 +1,4 @@
-package api
+package web
 
 import (
 	"context"
@@ -24,14 +24,14 @@ type Server struct {
 	server *http.Server            // The http server instance
 }
 
-func NewApiServer(
+func NewServer(
 	host string,
 	port int,
 	router *mux.Router,
 	routes *server.RoutingTable,
 	timers *server.TimerCollection,
 ) *Server {
-	// Create api server
+	// Create web server
 	return &Server{
 		host:   host,
 		port:   port,
@@ -41,11 +41,11 @@ func NewApiServer(
 	}
 }
 
-// RegisterRoutes register all possible api routers to handle REST requests.
+// RegisterRoutes register all possible web routers to handle REST requests.
 func (s *Server) RegisterRoutes(
 	prefix string,
 ) {
-	// Create api version 1 router from main router.
+	// Create web version 1 router from main router.
 	apiV1Router := s.router.
 		PathPrefix(prefix).Subrouter()
 	s.registerApiV1Handlers(apiV1Router)
@@ -53,7 +53,7 @@ func (s *Server) RegisterRoutes(
 
 // Serve start listening the Server.
 func (s *Server) Serve() {
-	// Create http server for REST api.
+	// Create http server for REST web.
 	s.server = &http.Server{
 		Addr:         s.getAddrStr(),
 		Handler:      s.router,
@@ -61,7 +61,7 @@ func (s *Server) Serve() {
 		ReadTimeout:  15 * time.Second,
 	}
 	// Start the server by listening.
-	log.Infof("api listening on %s", s.getAddrStr())
+	log.Infof("web listening on %s", s.getAddrStr())
 	if err := s.server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}

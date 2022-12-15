@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/donsprallo/gots/internal/api"
 	"github.com/donsprallo/gots/internal/ntp"
 	"github.com/donsprallo/gots/internal/server"
+	"github.com/donsprallo/gots/internal/web"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
@@ -20,8 +20,8 @@ import (
 var (
 	ntpHost *string
 	ntpPort *int
-	apiHost *string
-	apiPort *int
+	webHost *string
+	webPort *int
 )
 
 // Load a string value from environment key. If environment key
@@ -69,12 +69,12 @@ func init() {
 		"ntp daemon hostname")
 	ntpPort = flag.Int("port", getEnvInt("NTP_PORT", 123),
 		"ntp daemon port")
-	apiHost = flag.String(
-		"api-host", getEnvStr("API_HOST", "localhost"),
-		"api hostname")
-	apiPort = flag.Int(
-		"api-port", getEnvInt("API_PORT", 80),
-		"api port")
+	webHost = flag.String(
+		"web-host", getEnvStr("WEB_HOST", "localhost"),
+		"web hostname")
+	webPort = flag.Int(
+		"web-port", getEnvInt("WEB_PORT", 80),
+		"web port")
 	// Parse command line arguments.
 	flag.Parse()
 }
@@ -119,13 +119,13 @@ func main() {
 		*ntpHost, *ntpPort, routingStrategy)
 	go ntpServer.Serve()
 
-	// Now we create an api server. Here we can edit ntp server settings with
+	// Now we create a web server. Here we can edit ntp server settings with
 	// a universal rest client.
 	router := mux.NewRouter()
-	apiServer := api.NewApiServer(
-		*apiHost, *apiPort, router, routingTable, timers)
-	apiServer.RegisterRoutes("/api/v1")
-	go apiServer.Serve()
+	webServer := web.NewServer(
+		*webHost, *webPort, router, routingTable, timers)
+	webServer.RegisterRoutes("/api/v1")
+	go webServer.Serve()
 
 	// Create ticker to update all timers every second.
 	timerTicker := time.NewTicker(1 * time.Second)
@@ -147,7 +147,7 @@ func main() {
 
 		// Does not block if no connections, but will otherwise wait
 		// until the timeout deadline.
-		err := apiServer.Shutdown(ctx)
+		err := webServer.Shutdown(ctx)
 		if err != nil {
 			log.Error(err)
 		}
