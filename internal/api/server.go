@@ -2,10 +2,13 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/donsprallo/gots/internal/ntp"
 	"github.com/donsprallo/gots/internal/server"
 	"net"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -13,25 +16,28 @@ import (
 )
 
 type Server struct {
-	host   string               // The server hostname
-	port   int                  // The server port
-	router *mux.Router          // The http handler
-	rTable *server.RoutingTable // The routing table as database
-	server *http.Server         // The http server instance
+	host   string                  // The server hostname
+	port   int                     // The server port
+	router *mux.Router             // The http handler
+	routes *server.RoutingTable    // The registered routes
+	timers *server.TimerCollection // The registered timers
+	server *http.Server            // The http server instance
 }
 
 func NewApiServer(
 	host string,
 	port int,
 	router *mux.Router,
-	rTable *server.RoutingTable,
+	routes *server.RoutingTable,
+	timers *server.TimerCollection,
 ) *Server {
 	// Create api server
 	return &Server{
 		host:   host,
 		port:   port,
 		router: router,
-		rTable: rTable,
+		routes: routes,
+		timers: timers,
 	}
 }
 
@@ -85,13 +91,25 @@ func (s *Server) registerApiV1Handlers(router *mux.Router) {
 	router.HandleFunc("/healthcheck",
 		s.healthcheckHandler).Methods("GET")
 
-	// Default route management
-	router.HandleFunc("/route/default",
-		s.getDefaultRouteHandler).Methods("GET")
-	router.HandleFunc("/route/default",
-		s.updateDefaultRouteHandler).Methods("POST")
+	// TimerResponse collection management
+	router.HandleFunc("/timer",
+		s.getAllTimersHandler).Methods("GET")
+	router.HandleFunc("/timer/ntp",
+		s.newNtpTimerHandler).Methods("PUT")
+	router.HandleFunc("/timer/system",
+		s.newSystemTimerHandler).Methods("PUT")
+	router.HandleFunc("/timer/modify",
+		s.newModifyTimerHandler).Methods("PUT")
 
-	// Route collection management
+	// Specific timer management
+	router.HandleFunc("/timer/{id}",
+		s.deleteTimerHandler).Methods("DELETE")
+	router.HandleFunc("/timer/{id}",
+		s.getTimerHandler).Methods("GET")
+	router.HandleFunc("/timer/{id}",
+		s.updateTimerHandler).Methods("POST")
+
+	// RouteResponse collection management
 	router.HandleFunc("/route",
 		s.getAllRoutesHandler).Methods("GET")
 	router.HandleFunc("/route",
@@ -104,6 +122,12 @@ func (s *Server) registerApiV1Handlers(router *mux.Router) {
 		s.getRouteHandler).Methods("GET")
 	router.HandleFunc("/route/{id}",
 		s.updateRouteHandler).Methods("POST")
+
+	// Default route management
+	router.HandleFunc("/route/default",
+		s.getDefaultRouteHandler).Methods("GET")
+	router.HandleFunc("/route/default",
+		s.updateDefaultRouteHandler).Methods("POST")
 }
 
 // Get the healthcheck response. The healthcheck always return the same
@@ -116,6 +140,194 @@ func (s *Server) healthcheckHandler(
 	mustJsonResponse(res, map[string]bool{"ok": true})
 }
 
+// Create a ntp.Package from request data.
+func packageFromReq(_ *http.Request) *ntp.Package {
+	return &ntp.Package{}
+}
+
+// Get all registered timers.
+func (s *Server) getAllTimersHandler(
+	res http.ResponseWriter,
+	_ *http.Request,
+) {
+	timers := s.timers.All()
+	// Build response from timers collection. We know the size
+	// of timer collection here. So we can allocate the size.
+	response := TimersResponse{
+		Length: s.timers.Length(),
+		Timers: make([]TimerResponse, s.timers.Length()),
+	}
+	// Iterate through timers and add each entry to response.
+	for idx, entry := range timers {
+		response.Timers[idx] = TimerResponse{
+			Id:   idx,
+			Type: server.TimerName(entry.Timer),
+		}
+	}
+	// Return as JSON response.
+	mustJsonResponse(res, response)
+}
+
+// Create a new NtpTimer.
+func (s *Server) newNtpTimerHandler(
+	res http.ResponseWriter,
+	req *http.Request,
+) {
+	// Create new timer from request data.
+	ntpPackage := packageFromReq(req)
+	timer := &server.NtpTimer{
+		NTPPackage: *ntpPackage,
+	}
+	// Add timer to collection.
+	idx := s.timers.Add(timer)
+	mustJsonTimerResponse(res, timer, idx)
+}
+
+// Create a new SystemTimer.
+func (s *Server) newSystemTimerHandler(
+	res http.ResponseWriter,
+	req *http.Request,
+) {
+	// Create new timer from request data.
+	ntpPackage := packageFromReq(req)
+	timer := &server.SystemTimer{
+		NTPPackage: *ntpPackage,
+	}
+	// Add timer to collection.
+	idx := s.timers.Add(timer)
+	mustJsonTimerResponse(res, timer, idx)
+}
+
+// Create a new ModifyTimer.
+func (s *Server) newModifyTimerHandler(
+	res http.ResponseWriter,
+	req *http.Request,
+) {
+	// Create new timer from request data.
+	ntpPackage := packageFromReq(req)
+	timer := &server.ModifyTimer{
+		NTPPackage: *ntpPackage,
+		Time:       time.Now(),
+	}
+	// Add timer to collection.
+	idx := s.timers.Add(timer)
+	mustJsonTimerResponse(res, timer, idx)
+}
+
+// Delete an existing server.Timer instance from collection.
+func (s *Server) deleteTimerHandler(
+	res http.ResponseWriter,
+	req *http.Request,
+) {
+	// Parse query parameters.
+	vars := mux.Vars(req)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		mustJsonResponse(res, ErrorResponse{
+			Message: "invalid query id",
+		})
+		return
+	}
+	// Delete timer by id.
+	err = s.timers.Delete(id)
+	if err != nil {
+		mustJsonResponse(res, ErrorResponse{
+			Message: err.Error(),
+		})
+		return
+	}
+	// Timer successful deleted.
+	mustJsonResponse(res, MessageResponse{
+		Message: "delete timer success",
+	})
+}
+
+// Get a specific route.
+func (s *Server) getTimerHandler(
+	res http.ResponseWriter,
+	req *http.Request,
+) {
+	// Parse query parameters.
+	vars := mux.Vars(req)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		mustJsonResponse(res, ErrorResponse{
+			Message: "invalid query id",
+		})
+		return
+	}
+	// Get timer by id.
+	timer := s.timers.Get(id)
+	if timer.Timer == nil {
+		mustJsonResponse(res, ErrorResponse{
+			Message: "can not find timer by id",
+		})
+		return
+	}
+	// Make response with timer.
+	mustJsonTimerResponse(
+		res, timer.Timer, id)
+}
+
+// Update settings of specific route.
+func (s *Server) updateTimerHandler(
+	res http.ResponseWriter,
+	req *http.Request,
+) {
+	// Parse query parameters.
+	vars := mux.Vars(req)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		mustJsonResponse(res, ErrorResponse{
+			Message: "invalid query id",
+		})
+		return
+	}
+	// Get timer by id.
+	timer := s.timers.Get(id)
+	if timer.Timer == nil {
+		mustJsonResponse(res, ErrorResponse{
+			Message: "can not find timer by id",
+		})
+		return
+	}
+
+	// Build response from timer type.
+	switch timer.Timer.(type) {
+	case *server.ModifyTimer:
+		// Parse body parameters for ModifyTimer.
+		body := make(map[string]string, 0)
+		err := json.NewDecoder(req.Body).Decode(&body)
+		if err != nil {
+			mustJsonResponse(res, ErrorResponse{
+				Message: "can not decode body data",
+			})
+			return
+		}
+		// Parse time value from body
+		timeLayout := time.RFC822
+		timeVal, err := time.Parse(
+			timeLayout, body["time"])
+		if err != nil {
+			mustJsonResponse(res, ErrorResponse{
+				Message: "can not parse time",
+			})
+			return
+		}
+		// Set timer with value.
+		timer.Timer.Set(timeVal)
+		mustJsonResponse(res, MessageResponse{
+			Message: "timer update successful",
+		})
+		return
+	default:
+		mustJsonResponse(res, ErrorResponse{
+			Message: "timer can not modified",
+		})
+		return
+	}
+}
+
 // Get the mode and time info from default route.
 func (s *Server) getDefaultRouteHandler(
 	res http.ResponseWriter,
@@ -125,7 +337,7 @@ func (s *Server) getDefaultRouteHandler(
 	res.WriteHeader(http.StatusNotImplemented)
 }
 
-// Set the mode to default router. On specific mode, its possible
+// Set the mode to default router. On specific mode, it's possible
 // to update settings.
 func (s *Server) updateDefaultRouteHandler(
 	res http.ResponseWriter,
@@ -140,23 +352,27 @@ func (s *Server) getAllRoutesHandler(
 	res http.ResponseWriter,
 	_ *http.Request,
 ) {
-	routes := s.rTable.All()
+	routes := s.routes.All()
 	lenRoutes := len(routes)
 	// Build response from routing table entries. We know the size
 	// of routing entries here. So we can allocate the size.
-	response := Routes{
+	response := RoutesResponse{
 		Length: lenRoutes,
-		Routes: make([]Route, lenRoutes),
+		Routes: make([]RouteResponse, lenRoutes),
 	}
 	// Iterate through routing entries and add each entry to response.
 	// As subnet, we return the CIDR string representation of the ip net.
 	// For timer mode, an extra function is converting the timer to its
 	// string representation.
 	for idx, entry := range routes {
-		response.Routes[idx] = Route{
+		response.Routes[idx] = RouteResponse{
 			Id:     idx,
 			Subnet: entry.IPNet.String(),
-			Timer:  server.TimerName(entry.Timer),
+			// TODO: We can not get timer id here
+			Timer: TimerResponse{
+				Id:   -1,
+				Type: server.TimerName(entry.Timer),
+			},
 		}
 	}
 	// Return as JSON response.
