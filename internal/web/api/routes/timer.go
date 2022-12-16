@@ -11,8 +11,9 @@ import (
 )
 
 type TimerResponse struct {
-	Id   int    `json:"id"`
-	Type string `json:"type"`
+	Id    int    `json:"id"`
+	Type  string `json:"type"`
+	Value string `json:"value"`
 }
 
 type TimerValueResponse struct {
@@ -75,8 +76,9 @@ func (e *TimerEndpoint) getAllTimers(
 	// Iterate through timers and add each entry to response.
 	for idx, entry := range timers {
 		response.Timers[idx] = TimerResponse{
-			Id:   idx,
-			Type: server.TimerName(entry.Timer),
+			Id:    idx,
+			Type:  server.TimerName(entry.Timer),
+			Value: entry.Timer.Get().Format(time.RFC3339),
 		}
 	}
 	// Return as JSON response.
@@ -217,7 +219,7 @@ func (e *TimerEndpoint) updateTimer(
 			return
 		}
 		// Parse time value from body
-		timeLayout := time.RFC822
+		timeLayout := time.RFC3339
 		timeVal, err := time.Parse(
 			timeLayout, body["time"])
 		if err != nil {

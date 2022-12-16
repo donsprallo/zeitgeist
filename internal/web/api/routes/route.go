@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type RouteResponse struct {
@@ -93,8 +94,9 @@ func (e *RouteEndpoint) getDefaultRoute(
 					Id:     entry.Id,
 					Subnet: entry.IPNet.String(),
 					Timer: TimerResponse{
-						Id:   entry.TimerId,
-						Type: server.TimerName(entry.Timer),
+						Id:    entry.TimerId,
+						Type:  server.TimerName(entry.Timer),
+						Value: entry.Timer.Get().Format(time.RFC3339),
 					},
 				},
 			)
@@ -167,8 +169,9 @@ func (e *RouteEndpoint) getAllRoutes(
 			Id:     entry.Id,
 			Subnet: entry.IPNet.String(),
 			Timer: TimerResponse{
-				Id:   entry.TimerId,
-				Type: server.TimerName(entry.Timer),
+				Id:    entry.TimerId,
+				Type:  server.TimerName(entry.Timer),
+				Value: entry.Timer.Get().Format(time.RFC3339),
 			},
 		}
 	}
@@ -238,10 +241,35 @@ func (e *RouteEndpoint) deleteRoute(
 
 // Get a specific route.
 func (e *RouteEndpoint) getRoute(
-	w http.ResponseWriter, _ *http.Request,
+	w http.ResponseWriter, r *http.Request,
 ) {
-	// Write not implemented status code
-	w.WriteHeader(http.StatusNotImplemented)
+	// Parse query parameters.
+	var vars = mux.Vars(r)
+	routeId, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		api.MustJsonResponse(
+			w, QueryParameterError, http.StatusBadRequest)
+		return
+	}
+
+	// Find route by id and update its timer.
+	route := e.routes.Get(routeId)
+	if route == nil {
+		api.MustJsonResponse(
+			w, NotFoundError, http.StatusBadRequest)
+		return
+	}
+
+	// Send success response.
+	api.MustJsonResponse(w, RouteResponse{
+		Id:     route.Id,
+		Subnet: route.IPNet.String(),
+		Timer: TimerResponse{
+			Id:    route.TimerId,
+			Type:  server.TimerName(route.Timer),
+			Value: route.Timer.Get().Format(time.RFC3339),
+		},
+	}, http.StatusOK)
 }
 
 type UpdateRouteRequest struct {
