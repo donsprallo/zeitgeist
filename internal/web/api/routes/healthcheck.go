@@ -43,6 +43,10 @@ type HealthcheckResponse struct {
 func (e *HealthcheckEndpoint) healthcheck(
 	w http.ResponseWriter, _ *http.Request,
 ) {
+	// Disable cache to prevent http caching from serving the
+	// request. As a result, every request to the endpoint returns
+	// the most up-to-date status of the service.
+	w.Header().Add("Cache-Control", "no-cache")
 	api.MustJsonResponse(w, HealthcheckResponse{
 		Status: true,
 	}, http.StatusOK)
