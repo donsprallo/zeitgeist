@@ -6,50 +6,103 @@ import (
 	"time"
 )
 
-func TestTimestampToSeconds(t *testing.T) {
+func TestToTimestamp(t *testing.T) {
 	// Create test data table.
 	values := []time.Time{
-		time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC),
 		time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC),
 		time.Date(2038, time.January, 1, 0, 0, 0, 0, time.UTC),
 	}
 
 	// Test all entries in test table.
-	for _, e := range values {
-		secs, fracs := TimestampToSeconds(e)
+	for idx, e := range values {
+		ts := ToTimestamp(e)
 
 		// Calculate seconds part.
 		testS := uint32(e.Unix()) + TimeDelta
 
 		// Calculate fractional part.
-		micros := float64(e.UnixMicro() + 1)
+		micros := float64(e.UnixMicro())
 		factor := (1 << 32) * (1.0e-6)
 		testF := uint32(micros * factor)
 
-		if secs != testS {
-			t.Errorf("incorrect secs from TimestampToSeconds")
+		// Test calculated results.
+		if ts.Seconds != testS {
+			t.Errorf("[%d] incorrect secs from TimestampToSeconds", idx)
 		}
 
-		if fracs != testF {
-			t.Errorf("incorrect fracs from TimestampToSeconds")
+		if ts.Fraction != testF {
+			t.Errorf("[%d] incorrect fracs from TimestampToSeconds", idx)
 		}
 	}
 }
 
-func TestSecondsToTimestamp(t *testing.T) {
+func TestToTime(t *testing.T) {
 	// Create test data table.
 	table := []struct {
-		seconds   uint32
-		fraction  uint32
-		timestamp time.Time
+		timestamp Timestamp
+		datetime  time.Time
 	}{
-		{},
+		{
+			Timestamp{
+				Seconds:  1671180400 + TimeDelta,
+				Fraction: 4096,
+			}, time.Date(
+				2022, time.December, 16, 8, 46, 40, 4096, time.UTC),
+		},
+		{
+			Timestamp{
+				Seconds:  1706742000 + TimeDelta,
+				Fraction: 0,
+			}, time.Date(
+				2024, time.January, 31, 23, 0, 0, 0, time.UTC),
+		},
+		{
+			Timestamp{
+				Seconds:  1528596244 + TimeDelta,
+				Fraction: 0,
+			}, time.Date(
+				2018, time.June, 10, 2, 4, 4, 0, time.UTC),
+		},
+		{
+			Timestamp{
+				Seconds:  1907287444 + TimeDelta,
+				Fraction: 0,
+			}, time.Date(
+				2030, time.June, 10, 2, 4, 4, 0, time.UTC),
+		},
 	}
 
-	for _, e := range table {
-		ts := SecondsToTimestamp(e.seconds, e.fraction)
-		if ts != e.timestamp {
-			t.Errorf("incorrect timestamp conversion")
+	// Test all entries in test table.
+	for idx, e := range table {
+		ts := ToTime(e.timestamp)
+		// Test conversion result.
+		if ts != e.datetime {
+			t.Errorf("[%d] incorrect timestamp conversion %s != %s",
+				idx, ts.String(), e.datetime.String())
+		}
+	}
+}
+
+func TestTimeConversion(t *testing.T) {
+	// Create test data table.
+	values := []time.Time{
+		// TODO: This case is not handled now.
+		// time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2038, time.January, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	// Test all entries in test table.
+	for idx, e := range values {
+		ts := ToTimestamp(e)
+		tv := ToTime(ts)
+
+		if tv != e {
+			t.Errorf("[%d] incorrect timestamp conversion %s != %s",
+				idx, tv.String(), e.String())
 		}
 	}
 }

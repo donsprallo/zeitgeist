@@ -214,7 +214,7 @@ func PackageFromTimer(
 	dst.SetReferenceTimestamp(timer.Get())
 	dst.SetOriginateTimestamp(timer.Get())
 	// Set transmit timestamp at least before sent
-	dst.SetTransmitTimestamp(timer.Get())
+	//dst.SetTransmitTimestamp(timer.Get())
 
 	return dst, nil
 }

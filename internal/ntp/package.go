@@ -59,29 +59,29 @@ const (
 	ModePrivate    uint32 = 0x0000_0007
 )
 
-// TimestampToSeconds convert unix time.Time to seconds and fractional
-// part of a ntp timestamp. No ntp timestamp may be passed as t.
-func TimestampToSeconds(t time.Time) (secs, fracs uint32) {
-	// TODO: Must test this
-	s := t.Unix()
-	secs = uint32(s) + TimeDelta
-	fracs = uint32(float64(t.UnixMicro()+1) * (1 << 32) * 1.0e-6)
-	return
+type Timestamp struct {
+	Seconds  uint32
+	Fraction uint32
 }
 
-// SecondsToTimestamp convert seconds and fraction of seconds to time.Time.
-func SecondsToTimestamp(secs, fracs uint32) time.Time {
-	// TODO: Must test this
-	buf := make([]byte, 8)
-	binary.BigEndian.PutUint32(buf[0:], secs)
-	binary.BigEndian.PutUint32(buf[4:], fracs)
+// ToTimestamp convert a unix time.Time to seconds and fractional
+// part of a ntp timestamp.
+func ToTimestamp(t time.Time) Timestamp {
+	var ts Timestamp
+	unix := t.Unix()
+	ts.Seconds = uint32(unix) + TimeDelta
+	ts.Fraction = uint32(float64(t.UnixMicro()) * (1 << 32) * 1.0e-6)
+	return ts
+}
 
-	t := time.Time{}
-	err := t.UnmarshalBinary(buf)
-	if err != nil {
-		return time.Time{}
+// ToTime convert seconds and fraction of seconds to time.Time.
+func ToTime(ts Timestamp) time.Time {
+	if ts.Seconds > 0 {
+		ts.Seconds -= TimeDelta
 	}
-	return t
+	seconds := time.Duration(ts.Seconds) * time.Second
+	nanoseconds := time.Duration(ts.Fraction)
+	return UnixEpoch.Add(seconds + nanoseconds)
 }
 
 // Package is the ntp package representation. A package is
@@ -270,21 +270,21 @@ func (pkg *Package) MarshalBinary() ([]byte, error) {
 	enc = encoder.AppendUint32(enc, pkg.referenceClockId)
 
 	// Encode package data timestamps
-	secs, fracs := TimestampToSeconds(pkg.referenceTimestamp)
-	enc = encoder.AppendUint32(enc, secs)
-	enc = encoder.AppendUint32(enc, fracs)
+	ts := ToTimestamp(pkg.referenceTimestamp)
+	enc = encoder.AppendUint32(enc, ts.Seconds)
+	enc = encoder.AppendUint32(enc, ts.Fraction)
 
-	secs, fracs = TimestampToSeconds(pkg.originateTimestamp)
-	enc = encoder.AppendUint32(enc, secs)
-	enc = encoder.AppendUint32(enc, fracs)
+	ts = ToTimestamp(pkg.originateTimestamp)
+	enc = encoder.AppendUint32(enc, ts.Seconds)
+	enc = encoder.AppendUint32(enc, ts.Fraction)
 
-	secs, fracs = TimestampToSeconds(pkg.receiveTimestamp)
-	enc = encoder.AppendUint32(enc, secs)
-	enc = encoder.AppendUint32(enc, fracs)
+	ts = ToTimestamp(pkg.receiveTimestamp)
+	enc = encoder.AppendUint32(enc, ts.Seconds)
+	enc = encoder.AppendUint32(enc, ts.Fraction)
 
-	secs, fracs = TimestampToSeconds(pkg.transmitTimestamp)
-	enc = encoder.AppendUint32(enc, secs)
-	enc = encoder.AppendUint32(enc, fracs)
+	ts = ToTimestamp(pkg.transmitTimestamp)
+	enc = encoder.AppendUint32(enc, ts.Seconds)
+	enc = encoder.AppendUint32(enc, ts.Fraction)
 
 	return enc, nil
 }
@@ -308,17 +308,29 @@ func (pkg *Package) UnmarshalBinary(data []byte) error {
 	pkg.referenceClockId = dec.Uint32(buf[12:])
 
 	// Decode package data timestamps
-	secs, fracs := dec.Uint32(buf[16:]), dec.Uint32(buf[20:])
-	pkg.referenceTimestamp = SecondsToTimestamp(secs, fracs)
+	ts := Timestamp{
+		Seconds:  dec.Uint32(buf[16:]),
+		Fraction: dec.Uint32(buf[20:]),
+	}
+	pkg.referenceTimestamp = ToTime(ts)
 
-	secs, fracs = dec.Uint32(buf[24:]), dec.Uint32(buf[28:])
-	pkg.originateTimestamp = SecondsToTimestamp(secs, fracs)
+	ts = Timestamp{
+		Seconds:  dec.Uint32(buf[24:]),
+		Fraction: dec.Uint32(buf[28:]),
+	}
+	pkg.originateTimestamp = ToTime(ts)
 
-	secs, fracs = dec.Uint32(buf[32:]), dec.Uint32(buf[36:])
-	pkg.receiveTimestamp = SecondsToTimestamp(secs, fracs)
+	ts = Timestamp{
+		Seconds:  dec.Uint32(buf[32:]),
+		Fraction: dec.Uint32(buf[36:]),
+	}
+	pkg.receiveTimestamp = ToTime(ts)
 
-	secs, fracs = dec.Uint32(buf[40:]), dec.Uint32(buf[44:])
-	pkg.transmitTimestamp = SecondsToTimestamp(secs, fracs)
+	ts = Timestamp{
+		Seconds:  dec.Uint32(buf[40:]),
+		Fraction: dec.Uint32(buf[44:]),
+	}
+	pkg.transmitTimestamp = ToTime(ts)
 
 	return nil
 }
