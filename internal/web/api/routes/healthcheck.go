@@ -25,8 +25,10 @@ func NewHealthcheckEndpoint() api.Endpoint {
 func (e *HealthcheckEndpoint) RegisterRoutes(router *mux.Router) {
 	e.handler = router
 
-	// The only healthcheck route.
+	// The only healthcheck routes
 	router.HandleFunc("/", e.healthcheck).
+		Methods(http.MethodGet)
+	router.HandleFunc("/ping", e.ping).
 		Methods(http.MethodGet)
 }
 
@@ -37,17 +39,36 @@ type HealthcheckResponse struct {
 	Status bool `json:"status"`
 }
 
-// This is the default route for the HealthcheckEndpoint. The healthcheck
-// route always response with the HealthcheckResponse and status true. Any
-// other response indicates a critical system failure.
+// PingResponse is the response type for the HealthcheckEndpoint ping
+// route. The response contains only a boolean to display that the API
+// is available.
+type PingResponse struct {
+	Status bool `json:"status"`
+}
+
+// The healthcheck route of the HealthcheckEndpoint verifies multiple items
+// and responds with the status of the API and its dependencies. The route
+// responds with the HealthcheckResponse and is superior to the ping route.
 func (e *HealthcheckEndpoint) healthcheck(
 	w http.ResponseWriter, _ *http.Request,
 ) {
-	// Disable cache to prevent http caching from serving the
-	// request. As a result, every request to the endpoint returns
-	// the most up-to-date status of the service.
+	// Disable cache to prevent http caching from serving the request.
 	w.Header().Add("Cache-Control", "no-cache")
 	api.MustJsonResponse(w, HealthcheckResponse{
+		Status: true,
+	}, http.StatusOK)
+}
+
+// The ping route of the HealthcheckEndpoint barely checks that the API is
+// running and the service is accessible. For this the endpoint always return
+// the same result where status is true. Any other response indicates a
+// critical system failure.
+func (e *HealthcheckEndpoint) ping(
+	w http.ResponseWriter, _ *http.Request,
+) {
+	// Disable cache to prevent http caching from serving the request.
+	w.Header().Add("Cache-Control", "no-cache")
+	api.MustJsonResponse(w, PingResponse{
 		Status: true,
 	}, http.StatusOK)
 }
