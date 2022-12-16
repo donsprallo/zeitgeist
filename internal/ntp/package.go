@@ -4,21 +4,22 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"net"
 	"time"
 )
 
 var (
 	// Epoch represent the time.Date for the ntp epoch (1900-01-01).
-	Epoch time.Time = time.Date(
-		1900, 1, 1, 0, 0, 0, 0, time.UTC)
+	Epoch = time.Date(
+		1900, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	// UnixEpoch represent the time.Date for the unix epoch (1970-01-01).
-	UnixEpoch time.Time = time.Date(
-		1970, 1, 1, 0, 0, 0, 0, time.UTC)
+	UnixEpoch = time.Date(
+		1970, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	// TimeDelta is the time-delta in seconds from ntp epoch to unix epoch. The
 	// value is calculated by subtracting ntp epoch from unix epoch.
-	TimeDelta float64 = UnixEpoch.Sub(Epoch).Seconds()
+	TimeDelta = uint32(UnixEpoch.Sub(Epoch).Seconds())
 )
 
 // Constants for the ntp package.
@@ -58,16 +59,18 @@ const (
 	ModePrivate    uint32 = 0x0000_0007
 )
 
-// Convert time.Time to seconds and fraction of seconds.
-func timestampToNtpSeconds(t time.Time) (secs, fracs uint32) {
+// TimestampToSeconds convert unix time.Time to seconds and fractional
+// part of a ntp timestamp. No ntp timestamp may be passed as t.
+func TimestampToSeconds(t time.Time) (secs, fracs uint32) {
 	// TODO: Must test this
-	secs = uint32(t.Unix() + int64(TimeDelta))
-	fracs = uint32(t.Nanosecond())
+	s := t.Unix()
+	secs = uint32(s) + TimeDelta
+	fracs = uint32(float64(t.UnixMicro()+1) * (1 << 32) * 1.0e-6)
 	return
 }
 
-// Convert seconds and fraction of seconds to time.Time.
-func ntpSecondsToTimestamp(secs, fracs uint32) time.Time {
+// SecondsToTimestamp convert seconds and fraction of seconds to time.Time.
+func SecondsToTimestamp(secs, fracs uint32) time.Time {
 	// TODO: Must test this
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint32(buf[0:], secs)
@@ -267,19 +270,19 @@ func (pkg *Package) MarshalBinary() ([]byte, error) {
 	enc = encoder.AppendUint32(enc, pkg.referenceClockId)
 
 	// Encode package data timestamps
-	secs, fracs := timestampToNtpSeconds(pkg.referenceTimestamp)
+	secs, fracs := TimestampToSeconds(pkg.referenceTimestamp)
 	enc = encoder.AppendUint32(enc, secs)
 	enc = encoder.AppendUint32(enc, fracs)
 
-	secs, fracs = timestampToNtpSeconds(pkg.originateTimestamp)
+	secs, fracs = TimestampToSeconds(pkg.originateTimestamp)
 	enc = encoder.AppendUint32(enc, secs)
 	enc = encoder.AppendUint32(enc, fracs)
 
-	secs, fracs = timestampToNtpSeconds(pkg.receiveTimestamp)
+	secs, fracs = TimestampToSeconds(pkg.receiveTimestamp)
 	enc = encoder.AppendUint32(enc, secs)
 	enc = encoder.AppendUint32(enc, fracs)
 
-	secs, fracs = timestampToNtpSeconds(pkg.transmitTimestamp)
+	secs, fracs = TimestampToSeconds(pkg.transmitTimestamp)
 	enc = encoder.AppendUint32(enc, secs)
 	enc = encoder.AppendUint32(enc, fracs)
 
@@ -306,16 +309,81 @@ func (pkg *Package) UnmarshalBinary(data []byte) error {
 
 	// Decode package data timestamps
 	secs, fracs := dec.Uint32(buf[16:]), dec.Uint32(buf[20:])
-	pkg.referenceTimestamp = ntpSecondsToTimestamp(secs, fracs)
+	pkg.referenceTimestamp = SecondsToTimestamp(secs, fracs)
 
 	secs, fracs = dec.Uint32(buf[24:]), dec.Uint32(buf[28:])
-	pkg.originateTimestamp = ntpSecondsToTimestamp(secs, fracs)
+	pkg.originateTimestamp = SecondsToTimestamp(secs, fracs)
 
 	secs, fracs = dec.Uint32(buf[32:]), dec.Uint32(buf[36:])
-	pkg.receiveTimestamp = ntpSecondsToTimestamp(secs, fracs)
+	pkg.receiveTimestamp = SecondsToTimestamp(secs, fracs)
 
 	secs, fracs = dec.Uint32(buf[40:]), dec.Uint32(buf[44:])
-	pkg.transmitTimestamp = ntpSecondsToTimestamp(secs, fracs)
+	pkg.transmitTimestamp = SecondsToTimestamp(secs, fracs)
 
 	return nil
+}
+
+// Request a Package from remote host.
+func Request(host string, port int) (*Package, error) {
+	var pkg Package
+
+	// Create udp connection with read write timeout.
+	conn, err := createUdpConn(host, port, 1*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert package to bytes.
+	bytesToSent, err := pkg.ToBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	// Write bytes to connection.
+	write, err := conn.Write(bytesToSent)
+	if err != nil || write != PackageSize {
+		return nil, err
+	}
+
+	// Read response from connection.
+	buffer := make([]byte, PackageSize)
+	read, err := conn.Read(buffer)
+	if err != nil || read != PackageSize {
+		return nil, err
+	}
+
+	// Parse package from received bytes.
+	err = pkg.UnmarshalBinary(buffer)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pkg, nil
+}
+
+func createUdpConn(
+	host string, port int, timeout time.Duration,
+) (net.Conn, error) {
+	addr := fmt.Sprintf("%s:%d", host, port)
+	// Dial to remote udp address.
+	conn, err := net.Dial("udp", addr)
+	if err != nil {
+		return nil, err
+	}
+
+	// Setup connection read and write timeout. We need to set up
+	// timeout to a future time value here.
+	deadline := time.Now().Add(timeout)
+
+	err = conn.SetReadDeadline(deadline)
+	if err != nil {
+		return nil, err
+	}
+
+	err = conn.SetWriteDeadline(deadline)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, nil
 }

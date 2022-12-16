@@ -3,12 +3,61 @@ package ntp
 import (
 	"bytes"
 	"testing"
+	"time"
 )
 
+func TestTimestampToSeconds(t *testing.T) {
+	// Create test data table.
+	values := []time.Time{
+		time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2038, time.January, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	// Test all entries in test table.
+	for _, e := range values {
+		secs, fracs := TimestampToSeconds(e)
+
+		// Calculate seconds part.
+		testS := uint32(e.Unix()) + TimeDelta
+
+		// Calculate fractional part.
+		micros := float64(e.UnixMicro() + 1)
+		factor := (1 << 32) * (1.0e-6)
+		testF := uint32(micros * factor)
+
+		if secs != testS {
+			t.Errorf("incorrect secs from TimestampToSeconds")
+		}
+
+		if fracs != testF {
+			t.Errorf("incorrect fracs from TimestampToSeconds")
+		}
+	}
+}
+
+func TestSecondsToTimestamp(t *testing.T) {
+	// Create test data table.
+	table := []struct {
+		seconds   uint32
+		fraction  uint32
+		timestamp time.Time
+	}{
+		{},
+	}
+
+	for _, e := range table {
+		ts := SecondsToTimestamp(e.seconds, e.fraction)
+		if ts != e.timestamp {
+			t.Errorf("incorrect timestamp conversion")
+		}
+	}
+}
+
 func TestPackageToBytes(t *testing.T) {
-	// Create test table; the ntp package will convert to bytes
+	// Create test e; the ntp package will convert to bytes
 	// and check that the result is equal to data.
-	tables := []struct {
+	table := []struct {
 		pkg  Package
 		data []byte
 	}{
@@ -20,9 +69,9 @@ func TestPackageToBytes(t *testing.T) {
 		}, []byte("HelloWorld")},
 	}
 
-	// Test all data in test table
-	for _, table := range tables {
-		b, err := table.pkg.ToBytes()
+	// Test all data in test e
+	for _, e := range table {
+		b, err := e.pkg.ToBytes()
 
 		// Check error value
 		if err != nil {
@@ -36,17 +85,17 @@ func TestPackageToBytes(t *testing.T) {
 
 		// Check result equal to test value
 		idx := bytes.IndexByte(b, 0x00)
-		if !bytes.Equal(b[:idx], table.data) {
+		if !bytes.Equal(b[:idx], e.data) {
 			t.Errorf("ntp package to bytes '%s' not equal to '%s'",
-				b, table.data)
+				b, e.data)
 		}
 	}
 }
 
 func TestPackageFromBytes(t *testing.T) {
-	// Create test table; the ntp package will convert to bytes
+	// Create test e; the ntp package will convert to bytes
 	// and check that the result is equal to data.
-	tables := []struct {
+	table := []struct {
 		pkg  Package
 		data []byte
 	}{
@@ -58,11 +107,11 @@ func TestPackageFromBytes(t *testing.T) {
 		}, []byte("HelloWorld")},
 	}
 
-	// Test all data in test table
-	for _, table := range tables {
+	// Test all data in test e
+	for _, e := range table {
 		// Copy test data to buffer with length of 48 byte length
 		buffer := make([]byte, 48)
-		copy(buffer[:], table.data)
+		copy(buffer[:], e.data)
 
 		// Create ntp package from buffer with 48 byte length
 		pkg, err := PackageFromBytes(buffer)
@@ -74,19 +123,19 @@ func TestPackageFromBytes(t *testing.T) {
 
 		// Check result equal to test value. We do not need to test
 		// all fields here. We just test the first three values.
-		if pkg.header != table.pkg.header {
+		if pkg.header != e.pkg.header {
 			t.Errorf("ntp package from bytes '%X' not equal to '%X'",
-				pkg.header, &table.pkg.header)
+				pkg.header, &e.pkg.header)
 		}
 
-		if pkg.rootDelay != table.pkg.rootDelay {
+		if pkg.rootDelay != e.pkg.rootDelay {
 			t.Errorf("ntp package from bytes '%X' not equal to '%X'",
-				pkg.rootDelay, &table.pkg.rootDelay)
+				pkg.rootDelay, &e.pkg.rootDelay)
 		}
 
-		if pkg.rootDispersion != table.pkg.rootDispersion {
+		if pkg.rootDispersion != e.pkg.rootDispersion {
 			t.Errorf("ntp package from bytes '%X' not equal to '%X'",
-				pkg.rootDispersion, &table.pkg.rootDispersion)
+				pkg.rootDispersion, &e.pkg.rootDispersion)
 		}
 	}
 }

@@ -49,27 +49,29 @@ func getEnvInt(key string, fallback int) int {
 	return fallback
 }
 
+// Load dotenv when .env file available. When this file
+// does not exist, this is not an error.
 func init() {
-	// Load dotenv when .env file available. When this file
-	// does not exist, this is not an error.
 	err := godotenv.Load()
 	if err != nil {
 		log.Warn("no .env file to load")
 	}
 }
 
+// Setup application logger.
 func init() {
-	// Setup application logger.
 	log.SetLevel(log.DebugLevel)
 }
 
+// Setup command line arguments.
 func init() {
-	// Setup command line arguments.
+	// Ntp server arguments.
 	ntpHost = flag.String(
 		"host", getEnvStr("NTP_HOST", "localhost"),
 		"ntp daemon hostname")
 	ntpPort = flag.Int("port", getEnvInt("NTP_PORT", 123),
 		"ntp daemon port")
+	// Web server arguments.
 	webHost = flag.String(
 		"web-host", getEnvStr("WEB_HOST", "localhost"),
 		"web hostname")

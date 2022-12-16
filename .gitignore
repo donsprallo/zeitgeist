@@ -3,6 +3,7 @@
 .idea
 
 .dist
+.build
 
 # All binaries
 /**/*.exe
