@@ -6,16 +6,16 @@ import (
 	"net/http"
 )
 
-// Healthy Interface is used to check the health status of a system.
+// Healthy interface is used to check the health status of a system.
+// If IsHealthy returns false, then the system is in failure stat. The
+// error can be obtained with the builtin error interface.
 type Healthy interface {
 
 	// IsHealthy checks if something is OK or faulty. When all is OK
 	// true is returned, otherwise false is returned.
 	IsHealthy() bool
 
-	// Error returns an error message that provides a reason if IsHealthy
-	// returns false.
-	Error() string
+	error
 }
 
 // HealthcheckEndpoint is used to check anything that may interrupt
@@ -48,7 +48,7 @@ func (e *HealthcheckEndpoint) RegisterRoutes(router *mux.Router) {
 }
 
 // AddChecker adds a Healthy checkers with a name to the HealthcheckEndpoint.
-// The checkers is used in a healthcheck request to check the state of the
+// The checkers are used in a healthcheck request to check the state of the
 // system.
 func (e *HealthcheckEndpoint) AddChecker(
 	name string, checker Healthy) {
@@ -89,12 +89,18 @@ func (e *HealthcheckEndpoint) healthcheck(
 			apiErrors[name] = checker.Error()
 		}
 	}
+	// Set response status indicators.
+	hasErrors := len(apiErrors) != 0
+	statusCode := http.StatusOK
+	if hasErrors {
+		statusCode = http.StatusBadRequest
+	}
 	// Disable cache to prevent http caching from serving the request.
 	w.Header().Add("Cache-Control", "no-cache")
 	api.MustJsonResponse(w, HealthcheckResponse{
-		Status: len(apiErrors) == 0,
+		Status: !hasErrors,
 		Errors: apiErrors,
-	}, http.StatusOK)
+	}, statusCode)
 }
 
 // The ping route of the HealthcheckEndpoint barely checks that the API is
