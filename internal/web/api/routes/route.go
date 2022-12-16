@@ -109,10 +109,41 @@ func (e *RouteEndpoint) getDefaultRoute(
 // Set the mode to default handler. On specific mode, it's possible
 // to update settings.
 func (e *RouteEndpoint) updateDefaultRoute(
-	w http.ResponseWriter, _ *http.Request,
+	w http.ResponseWriter, r *http.Request,
 ) {
-	// Write not implemented status code
-	w.WriteHeader(http.StatusNotImplemented)
+	// Decode body data.
+	var request UpdateRouteRequest
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		api.MustJsonResponse(
+			w, BodyDecodeError, http.StatusBadRequest)
+		return
+	}
+
+	// Find timer by id.
+	timer := e.timers.Get(request.TimerId)
+	if timer.Timer == nil {
+		api.MustJsonResponse(
+			w, NotFoundError, http.StatusBadRequest)
+		return
+	}
+
+	// Find route by id and update its timer.
+	for _, entry := range e.routes.All() {
+		if isDefaultRoute(entry.IPNet) {
+			err := e.routes.Set(entry.Id, timer.Timer, timer.Id)
+			if err != nil {
+				api.MustJsonResponse(
+					w, NotFoundError, http.StatusBadRequest)
+				return
+			}
+		}
+	}
+
+	// Send success response.
+	api.MustJsonResponse(w, MessageResponse{
+		Message: "default route update success",
+	}, http.StatusOK)
 }
 
 // Get all registered routes.
