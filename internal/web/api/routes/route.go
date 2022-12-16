@@ -47,11 +47,11 @@ func (e *RouteEndpoint) RegisterRoutes(router *mux.Router) {
 		e.newRoute).Methods(http.MethodPut)
 
 	// Specific route management.
-	router.HandleFunc("/{id}",
+	router.HandleFunc("/{id:[0-9]+}",
 		e.deleteRoute).Methods(http.MethodDelete)
-	router.HandleFunc("/{id}",
+	router.HandleFunc("/{id:[0-9]+}",
 		e.getRoute).Methods(http.MethodGet)
-	router.HandleFunc("/{id}",
+	router.HandleFunc("/{id:[0-9]+}",
 		e.updateRoute).Methods(http.MethodPost)
 
 	// Default route management
@@ -61,12 +61,49 @@ func (e *RouteEndpoint) RegisterRoutes(router *mux.Router) {
 		e.updateDefaultRoute).Methods(http.MethodPost)
 }
 
+// Return true if net.IPNet is a default route.
+func isDefaultRoute(IPNet net.IPNet) bool {
+	if IPNet.IP.IsLoopback() ||
+		IPNet.IP.IsUnspecified() ||
+		IPNet.IP.IsLinkLocalUnicast() {
+		return true
+	}
+	return false
+}
+
 // Get the mode and time info from default route.
 func (e *RouteEndpoint) getDefaultRoute(
 	w http.ResponseWriter, _ *http.Request,
 ) {
-	// Write not implemented status code
-	w.WriteHeader(http.StatusNotImplemented)
+	// Create response, that contains all default routes.
+	response := RouteAllResponse{
+		Length: 0,
+		Routes: make([]RouteResponse, 0, 3),
+	}
+
+	// Iterate through all routes and search for alle default routes.
+	// Each default route is added to response on demand.
+	for _, entry := range e.routes.All() {
+		if isDefaultRoute(entry.IPNet) {
+			response.Length++
+			response.Routes = append(
+				// Build RouteResponse from entry and append to
+				// response.
+				response.Routes, RouteResponse{
+					Id:     entry.Id,
+					Subnet: entry.IPNet.String(),
+					Timer: TimerResponse{
+						Id:   entry.TimerId,
+						Type: server.TimerName(entry.Timer),
+					},
+				},
+			)
+		}
+	}
+
+	// Return as JSON response.
+	api.MustJsonResponse(
+		w, response, http.StatusOK)
 }
 
 // Set the mode to default handler. On specific mode, it's possible
