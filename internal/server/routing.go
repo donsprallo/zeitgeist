@@ -88,6 +88,25 @@ func (t *RoutingTable) Set(id int, timer Timer, timerId int) error {
 	return errors.New("no route found by id")
 }
 
+func (t *RoutingTable) Remove(id int) error {
+	// Find route by id.
+	index := -1
+	for idx, entry := range t.entries {
+		if entry.Id == id {
+			index = idx
+			break
+		}
+	}
+	// Check that route is found.
+	if index < 0 {
+		return errors.New(
+			"no route found")
+	}
+	// Remove route the inefficient way, but keep ordering.
+	t.entries = append(t.entries[:index], t.entries[index+1:]...)
+	return nil
+}
+
 // MustAdd works how RoutingTable.Add but on an error a panic is used.
 // The method adds a net.IP address and Timer to the Table. This address
 // maps a net.IP address to a specific Timer.

@@ -233,10 +233,46 @@ func (e *RouteEndpoint) newRoute(
 
 // Delete an existing route.
 func (e *RouteEndpoint) deleteRoute(
-	w http.ResponseWriter, _ *http.Request,
+	w http.ResponseWriter, r *http.Request,
 ) {
-	// Write not implemented status code
-	w.WriteHeader(http.StatusNotImplemented)
+	// Parse query parameters.
+	var vars = mux.Vars(r)
+	routeId, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		api.MustJsonResponse(
+			w, QueryParameterError, http.StatusBadRequest)
+		return
+	}
+
+	// Find route by id.
+	route := e.routes.Get(routeId)
+	if route == nil {
+		api.MustJsonResponse(
+			w, NotFoundError, http.StatusBadRequest)
+		return
+	}
+
+	// Protect default route from deletion.
+	if isDefaultRoute(route.IPNet) {
+		api.MustJsonResponse(
+			w, ErrorResponse{
+				Message: "can not delete default route",
+			}, http.StatusForbidden)
+		return
+	}
+
+	// Delete route from routing.
+	err = e.routes.Remove(routeId)
+	if err != nil {
+		api.MustJsonResponse(
+			w, NotFoundError, http.StatusBadRequest)
+		return
+	}
+
+	// Deletion success response.
+	api.MustJsonResponse(w, MessageResponse{
+		Message: "deletion route success",
+	}, http.StatusCreated)
 }
 
 // Get a specific route.
