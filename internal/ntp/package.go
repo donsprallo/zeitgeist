@@ -338,15 +338,18 @@ func (pkg *Package) UnmarshalBinary(data []byte) error {
 // Request a Package from remote host.
 func Request(host string, port int) (*Package, error) {
 	var pkg Package
+	pkg.SetMode(ModeClient)
+	pkg.SetVersion(VersionV3)
+	pkg.SetTransmitTimestamp(time.Now())
 
-	// Create udp connection with read write timeout.
-	conn, err := createUdpConn(host, port, 1*time.Second)
+	// Convert package to bytes.
+	bytesToSent, err := pkg.ToBytes()
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert package to bytes.
-	bytesToSent, err := pkg.ToBytes()
+	// Create udp connection with read write timeout.
+	conn, err := createUdpConn(host, port, 1*time.Second)
 	if err != nil {
 		return nil, err
 	}
