@@ -136,15 +136,22 @@ func main() {
 	apiTimer := routes.NewTimerEndpoint(timers)
 	apiRoute := routes.NewRouteEndpoint(timers, routingTable)
 
+	indexView := web.View{
+		TemplateDir: "./static",
+		Route:       "/static",
+	}
+
 	// We still need a web server so that we can deliver our routes.
 	webServer := web.NewServer(
 		*webHost, *webPort, router)
 
 	// The API endpoints must be registered with the web server. Here we define
 	// a prefix under which address the endpoint can be reached.
-	webServer.RegisterEndpoint("/api/v1/healthcheck", apiHealth)
+	webServer.RegisterEndpoint("/api/v1/health", apiHealth)
 	webServer.RegisterEndpoint("/api/v1/timer", apiTimer)
 	webServer.RegisterEndpoint("/api/v1/route", apiRoute)
+
+	webServer.RegisterView("/", indexView)
 
 	// Now we can start our webserver in background.
 	go webServer.Serve()

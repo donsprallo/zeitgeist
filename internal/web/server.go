@@ -83,3 +83,15 @@ func (s *Server) RegisterEndpoint(
 	// The endpoint must register its routes to the sub router.
 	endpoint.RegisterRoutes(router)
 }
+
+func (s *Server) RegisterView(
+	prefix string, view View,
+) {
+	// Create sub router for an endpoint. The endpoint can register
+	// its routes to this router.
+	router := s.handler.
+		PathPrefix(prefix).
+		Subrouter()
+	// The endpoint must register its routes to the sub router.
+	view.RegisterRoutes(router)
+}
