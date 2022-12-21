@@ -21,7 +21,6 @@ import (
 // Variables add by linker flags.
 var (
 	version string // Application version
-	hash    string // Application git hash
 )
 
 // Variables for command line arguments.
@@ -31,7 +30,6 @@ var (
 	webHost     *string
 	webPort     *int
 	showVersion *bool
-	showHash    *bool
 	logLevel    *string
 )
 
@@ -82,9 +80,6 @@ func init() {
 	showVersion = flag.Bool(
 		"version", false,
 		"show version information and exit")
-	showHash = flag.Bool(
-		"hash", false,
-		"show hash information and exit")
 	logLevel = flag.String(
 		"loglevel", defaultLogLevel,
 		"set application logger level")
@@ -114,12 +109,6 @@ func main() {
 	// When version flag is set, just display version information and exit.
 	if *showVersion == true {
 		fmt.Printf("time server version %s\n", version)
-		os.Exit(0)
-	}
-
-	// When hash flag is set, just display hash information and exit.
-	if *showHash == true {
-		fmt.Printf("time server hash %s\n", hash)
 		os.Exit(0)
 	}
 
