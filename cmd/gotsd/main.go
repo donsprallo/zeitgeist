@@ -132,7 +132,7 @@ func main() {
 
 	// For the web api we need to create endpoints. An endpoint is a collection
 	// of logically related functions for a web API.
-	apiHealth := routes.NewHealthcheckEndpoint()
+	apiHealth := routes.NewHealthEndpoint()
 	apiTimer := routes.NewTimerEndpoint(timers)
 	apiRoute := routes.NewRouteEndpoint(timers, routingTable)
 
@@ -142,7 +142,7 @@ func main() {
 
 	// The API endpoints must be registered with the web server. Here we define
 	// a prefix under which address the endpoint can be reached.
-	webServer.RegisterEndpoint("/api/v1/healthcheck", apiHealth)
+	webServer.RegisterEndpoint("/api/v1/health", apiHealth)
 	webServer.RegisterEndpoint("/api/v1/timer", apiTimer)
 	webServer.RegisterEndpoint("/api/v1/route", apiRoute)
 
