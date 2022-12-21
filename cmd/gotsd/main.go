@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"github.com/donsprallo/gots/internal/web/api/routes"
+	"github.com/donsprallo/gots/pkg/config"
 	"os"
 	"os/signal"
-	"strconv"
 	"time"
 
 	"github.com/donsprallo/gots/internal/ntp"
@@ -17,72 +18,111 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Variables for command line arguments.
+// Variables add by linker flags.
 var (
-	ntpHost *string
-	ntpPort *int
-	webHost *string
-	webPort *int
+	version string // Application version
+	hash    string // Application git hash
 )
 
-// Load a string value from environment key. If environment key
-// does not exist, a fallback value is returned.
-func getEnvStr(key string, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		log.Debugf("get parsed env[%s]: %s", key, value)
-		return value
-	}
-	log.Debugf("get fallback env[%s]: %s", key, fallback)
-	return fallback
-}
+// Variables for command line arguments.
+var (
+	ntpHost     *string
+	ntpPort     *int
+	webHost     *string
+	webPort     *int
+	showVersion *bool
+	showHash    *bool
+	logLevel    *string
+)
 
-// Load a integer value from environment key. Of environment key
-// does not exist, a fallback value is returned.
-func getEnvInt(key string, fallback int) int {
-	if value, ok := os.LookupEnv(key); ok {
-		if parsed, err := strconv.Atoi(value); err == nil {
-			log.Debugf("get parsed env[%s]: %d", key, parsed)
-			return parsed
-		}
-	}
-	log.Debugf("get fallback env[%s]: %d", key, fallback)
-	return fallback
-}
+// Default command line argument values.
+var (
+	defaultNtpHost  string
+	defaultNtpPort  int
+	defaultWebHost  string
+	defaultWebPort  int
+	defaultLogLevel string
+)
 
 // Load dotenv when .env file available. When this file
 // does not exist, this is not an error.
 func init() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Warn("no .env file to load")
+		log.Debug("no .env file to load")
 	}
 }
 
-// Setup application logger.
+// Initialize default command line argument values. This values can be
+// overwritten from environment variables. When no environment variable
+// is set, a fallback value is used.
 func init() {
-	log.SetLevel(log.DebugLevel)
+	defaultNtpHost = config.GetEnvStr("NTP_HOST", "localhost")
+	defaultNtpPort = config.GetEnvInt("NTP_PORT", 123)
+	defaultWebHost = config.GetEnvStr("WEB_HOST", "localhost")
+	defaultWebPort = config.GetEnvInt("WEB_PORT", 80)
+	defaultLogLevel = config.GetEnvStr("LOGLEVEL", "debug")
 }
 
 // Setup command line arguments.
 func init() {
 	// Ntp server arguments.
 	ntpHost = flag.String(
-		"host", getEnvStr("NTP_HOST", "localhost"),
-		"ntp daemon hostname")
-	ntpPort = flag.Int("port", getEnvInt("NTP_PORT", 123),
-		"ntp daemon port")
+		"host", defaultNtpHost,
+		"ntp daemon host interface name")
+	ntpPort = flag.Int("port", defaultNtpPort,
+		"ntp daemon host interface port")
 	// Web server arguments.
 	webHost = flag.String(
-		"web-host", getEnvStr("WEB_HOST", "localhost"),
-		"web hostname")
+		"web-host", defaultWebHost,
+		"web host interface name")
 	webPort = flag.Int(
-		"web-port", getEnvInt("WEB_PORT", 80),
-		"web port")
+		"web-port", defaultWebPort,
+		"web host interface port")
+	showVersion = flag.Bool(
+		"version", false,
+		"show version information and exit")
+	showHash = flag.Bool(
+		"hash", false,
+		"show hash information and exit")
+	logLevel = flag.String(
+		"loglevel", defaultLogLevel,
+		"set application logger level")
 	// Parse command line arguments.
 	flag.Parse()
 }
 
+// Setup application logger.
+func init() {
+	level := log.DebugLevel
+	switch *logLevel {
+	case "debug":
+		level = log.DebugLevel
+	case "info":
+		level = log.InfoLevel
+	case "warn":
+		level = log.WarnLevel
+	case "error":
+		level = log.ErrorLevel
+	default:
+		log.Warn("no valid log level set")
+	}
+	log.SetLevel(level)
+}
+
 func main() {
+	// When version flag is set, just display version information and exit.
+	if *showVersion == true {
+		fmt.Printf("time server version %s\n", version)
+		os.Exit(0)
+	}
+
+	// When hash flag is set, just display hash information and exit.
+	if *showHash == true {
+		fmt.Printf("time server hash %s\n", hash)
+		os.Exit(0)
+	}
+
 	// First we create a default ntp package. This is used for set up
 	// the default timers in next step. The settings here means, that
 	// the ntp server response override incoming requests with this data.
