@@ -18,7 +18,7 @@ RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
     ./cmd/gotsd/main.go
 
 # Application image.
-FROM golang:1.19.4-alpine3.17
+FROM alpine:3.17
 
 ARG version=0.0.0
 
@@ -29,7 +29,7 @@ LABEL "description"="a development NTP time server"
 ENV VERSION ${version}
 
 RUN apk add --no-cache \
-    ca-certificates bash
+    ca-certificates tzdata
 
 WORKDIR /usr/src/app
 
