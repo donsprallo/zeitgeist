@@ -53,4 +53,4 @@ jobs:
             --tag ghcr.io/donsprallo/gots:${{ github.ref_name }} .
 
       - name: Push Docker image
-        run: docker push ghcr.io/donsprallo/${{ github.ref_name }}
+        run: docker push ghcr.io/donsprallo/gots:${{ github.ref_name }}
