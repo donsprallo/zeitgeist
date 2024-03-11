@@ -45,7 +45,12 @@ func (s *Server) Serve() {
 	}
 
 	// Ready for listening, make secure socket closing.
-	defer conn.Close()
+	defer func(conn *net.UDPConn) {
+		err := conn.Close()
+		if err != nil {
+			log.Error(err)
+		}
+	}(conn)
 	log.Infof("server listening on %s", s.getAddrStr())
 
 	for {
