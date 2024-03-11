@@ -1,5 +1,5 @@
 # Builder stage.
-FROM golang:1.19.4-bullseye AS BUILDER
+FROM golang:1.22-bookworm AS BUILDER
 
 ARG version=0.0.0
 
@@ -18,7 +18,7 @@ RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
     ./cmd/zg-server/main.go
 
 # Application image.
-FROM alpine:3.17
+FROM alpine:3.19
 
 ARG version=0.0.0
 
