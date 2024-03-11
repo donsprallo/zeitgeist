@@ -5,7 +5,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/donsprallo/gots/internal/ntp"
+	"github.com/donsprallo/zeitgeist/internal/ntp"
 	log "github.com/sirupsen/logrus"
 )
 

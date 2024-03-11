@@ -2,7 +2,7 @@ package server
 
 import (
 	"fmt"
-	"github.com/donsprallo/gots/internal/ntp"
+	"github.com/donsprallo/zeitgeist/internal/ntp"
 	"testing"
 	"time"
 )

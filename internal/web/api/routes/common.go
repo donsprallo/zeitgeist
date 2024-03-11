@@ -1,9 +1,9 @@
 package routes
 
 import (
-	"github.com/donsprallo/gots/internal/ntp"
-	"github.com/donsprallo/gots/internal/server"
-	"github.com/donsprallo/gots/internal/web/api"
+	"github.com/donsprallo/zeitgeist/internal/ntp"
+	"github.com/donsprallo/zeitgeist/internal/server"
+	"github.com/donsprallo/zeitgeist/internal/web/api"
 	"net/http"
 	"time"
 )

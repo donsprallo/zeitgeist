@@ -47,7 +47,7 @@ jobs:
       - name: Build Docker image with tag latest
         run: |
           docker build --build-arg version=latest \
-            --tag ghcr.io/donsprallo/gots:latest .
+            --tag ghcr.io/donsprallo/zeitgeist:latest .
 
       - name: Push Docker image
-        run: docker push ghcr.io/donsprallo/gots
+        run: docker push ghcr.io/donsprallo/zeitgeist

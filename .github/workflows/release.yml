@@ -50,7 +50,7 @@ jobs:
       - name: Build Docker image with tag ${{ github.ref_name }}
         run: |
           docker build --build-arg version=${{ github.ref_name }} \
-            --tag ghcr.io/donsprallo/gots:${{ github.ref_name }} .
+            --tag ghcr.io/donsprallo/zeitgeist:${{ github.ref_name }} .
 
       - name: Push Docker image
-        run: docker push ghcr.io/donsprallo/gots:${{ github.ref_name }}
+        run: docker push ghcr.io/donsprallo/zeitgeist:${{ github.ref_name }}

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/donsprallo/gots/internal/ntp"
+	"github.com/donsprallo/zeitgeist/internal/ntp"
 )
 
 // Timer represents a ntp timer. A timer generates a time value and can be

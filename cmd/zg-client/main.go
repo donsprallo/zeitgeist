@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/donsprallo/gots/internal/ntp"
+	"github.com/donsprallo/zeitgeist/internal/ntp"
 )
 
 // Variables for command line arguments.

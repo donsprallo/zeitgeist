@@ -3,7 +3,7 @@ package web
 import (
 	"context"
 	"fmt"
-	"github.com/donsprallo/gots/internal/web/api"
+	"github.com/donsprallo/zeitgeist/internal/web/api"
 	"github.com/gorilla/mux"
 	"net"
 	"net/http"

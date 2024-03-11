@@ -2,8 +2,8 @@ package routes
 
 import (
 	"encoding/json"
-	"github.com/donsprallo/gots/internal/server"
-	"github.com/donsprallo/gots/internal/web/api"
+	"github.com/donsprallo/zeitgeist/internal/server"
+	"github.com/donsprallo/zeitgeist/internal/web/api"
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
